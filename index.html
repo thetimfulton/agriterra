@@ -32,6 +32,27 @@
         .metric-value { font-size: 1.5rem; font-weight: bold; color: #2c3e50; }
         .metric-unit { font-size: 0.9rem; color: #7f8c8d; }
         
+        /* Premium Upsell Section */
+        .premium-header { margin-top: 25px; padding-top: 15px; border-top: 2px dashed #ccc; font-weight: bold; color: #2c3e50; font-size: 1.1rem; }
+        .premium-desc { font-size: 0.85rem; color: #666; margin-bottom: 15px; }
+        .premium-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+        .premium-box { 
+            background: #ecf0f1; 
+            border: 1px solid #bdc3c7; 
+            padding: 10px 5px; 
+            border-radius: 5px; 
+            text-align: center; 
+            font-size: 0.75rem; 
+            color: #2c3e50; 
+            text-decoration: none; 
+            transition: all 0.2s; 
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .premium-box:hover { background: #2c3e50; color: white; border-color: #2c3e50; }
+        
         .loading { text-align: center; color: #666; display: none; margin-top: 20px; }
     </style>
 </head>
@@ -78,7 +99,7 @@
             minZoom: 7, 
             maxBounds: ohioBounds, 
             maxBoundsViscosity: 1.0,
-            layers: [streetMap] // Default layer
+            layers: [streetMap]
         });
 
         // Add layer control toggle
@@ -156,24 +177,19 @@
                 let cauvEst = 0;
                 let conservationNotes = "";
                 
-                // NW Ohio (Till Plains) - High productivity row crops
                 if (center.lng < -83.0 && center.lat > 39.5) {
                     cauvEst = Math.round(acres * 1200); 
                     conservationNotes = "High prime farmland overlap. Minimal wetland conflict.";
-                } 
-                // SE Ohio (Appalachian) - Woodlands, lower CAUV, higher conservation
-                else if (center.lng > -83.0 && center.lat < 40.0) {
+                } else if (center.lng > -83.0 && center.lat < 40.0) {
                     cauvEst = Math.round(acres * 350); 
-                    conservationNotes = "High potential for forest management or CRP (Conservation Reserve Program).";
-                } 
-                // Central/NE Ohio
-                else {
+                    conservationNotes = "High potential for forest management or CRP.";
+                } else {
                     cauvEst = Math.round(acres * 800); 
-                    conservationNotes = "Moderate prime farmland. Evaluate riparian buffers near local waterways.";
+                    conservationNotes = "Moderate prime farmland. Evaluate riparian buffers.";
                 }
 
-                // --- RENDER RESULTS ---
-                const html = `
+                // --- RENDER LIGHT REPORT RESULTS ---
+                let html = `
                     <div class="report-card">
                         <div class="metric-title">Selected Ohio Parcel</div>
                         <div class="metric-value">${acres} <span class="metric-unit">Acres</span></div>
@@ -201,9 +217,26 @@
                         <div class="metric-title">Est. CAUV Value & Conservation</div>
                         <div class="metric-value">$${cauvEst.toLocaleString()}</div>
                         <p style="font-size: 0.9rem; margin: 5px 0 0 0;">
-                            <strong>Notes:</strong> ${conservationNotes}<br>
-                            <small>Estimates based on regional soil/topography profiles.</small>
+                            <strong>Notes:</strong> ${conservationNotes}
                         </p>
+                    </div>
+                `;
+
+                // --- RENDER PREMIUM UPSELL SECTION ---
+                // Replace the "https://yourwebsite.com/inquiry" links with your actual form URL
+                html += `
+                    <div class="premium-header">Unlock Deep Analysis</div>
+                    <p class="premium-desc">Need more than a quick scan? Request a comprehensive, farmer-ready AgriTerra report for this exact parcel.</p>
+                    
+                    <div class="premium-grid">
+                        <a href="https://yourwebsite.com/inquiry?topic=property" target="_blank" class="premium-box">Property Info</a>
+                        <a href="https://yourwebsite.com/inquiry?topic=physical" target="_blank" class="premium-box">Physical Characteristics</a>
+                        <a href="https://yourwebsite.com/inquiry?topic=regulatory" target="_blank" class="premium-box">Regulatory Context</a>
+                        <a href="https://yourwebsite.com/inquiry?topic=infrastructure" target="_blank" class="premium-box">Infrastructure Proximity</a>
+                        <a href="https://yourwebsite.com/inquiry?topic=ag_value" target="_blank" class="premium-box">Agricultural Value</a>
+                        <a href="https://yourwebsite.com/inquiry?topic=market" target="_blank" class="premium-box">Market Context</a>
+                        <a href="https://yourwebsite.com/inquiry?topic=risks" target="_blank" class="premium-box">Risks & Trade-Offs</a>
+                        <a href="https://yourwebsite.com/inquiry?topic=insights" target="_blank" class="premium-box">Plain-Language Insights</a>
                     </div>
                 `;
                 
