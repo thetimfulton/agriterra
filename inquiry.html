@@ -75,6 +75,7 @@
     </div>
 
     <script>
+        // 1. Pre-fill the form using the URL data
         const params = new URLSearchParams(window.location.search);
         
         const rawTopic = params.get('topic') || "General Inquiry";
@@ -97,11 +98,41 @@
         document.getElementById('acres').value = acres;
         document.getElementById('coords').value = `${lat}, ${lng}`;
 
-        // UX Polish: Change button text when clicked so they know it's working
-        document.getElementById('agriterraForm').addEventListener('submit', function() {
+        // 2. The "Pro" Seamless Form Submission
+        const form = document.getElementById('agriterraForm');
+        
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault(); // Stops the browser from leaving the page immediately
+            
             const btn = document.getElementById('submitBtn');
+            const data = new FormData(form);
+            
+            // Visual feedback
             btn.innerText = 'Sending Request...';
             btn.disabled = true;
+            
+            try {
+                // Send the data to Formspree silently in the background
+                const response = await fetch(form.action, {
+                    method: form.method,
+                    body: data,
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    // Success! Force the redirect instantly using JS
+                    // IMPORTANT: Make sure this URL matches your actual live domain!
+                    window.location.href = "https://scout.agriterra.io/thank-you.html";
+                } else {
+                    alert("Oops! There was a problem submitting your request. Please try again.");
+                    btn.innerText = 'Submit Request';
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                alert("Network error. Please check your connection and try again.");
+                btn.innerText = 'Submit Request';
+                btn.disabled = false;
+            }
         });
     </script>
 
