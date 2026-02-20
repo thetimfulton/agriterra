@@ -10,14 +10,21 @@
     
     <style>
         body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; }
-        #sidebar { width: 350px; background: #f8f9fa; padding: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.1); z-index: 1000; overflow-y: auto; }
+        #sidebar { width: 350px; background: #f8f9fa; padding: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.1); z-index: 1000; overflow-y: auto; display: flex; flex-direction: column; }
         #map { flex-grow: 1; }
         
         h1 { color: #2c3e50; font-size: 1.5rem; margin-top: 0; }
         .brand { color: #27ae60; font-weight: bold; }
         .badge { background: #e74c3c; color: white; font-size: 0.7rem; padding: 3px 6px; border-radius: 4px; vertical-align: middle; }
         
-        .instruction { font-size: 0.9rem; color: #666; margin-bottom: 20px; }
+        .instruction { font-size: 0.9rem; color: #666; margin-bottom: 15px; }
+        
+        /* Search Bar Styles */
+        .search-container { display: flex; gap: 5px; margin-bottom: 20px; }
+        .search-container input { flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9rem; }
+        .search-container button { background: #34495e; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; transition: background 0.2s; }
+        .search-container button:hover { background: #2c3e50; }
+
         .btn { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 1rem; transition: background 0.2s; }
         .btn:disabled { background: #ccc; cursor: not-allowed; }
         .btn:hover:not(:disabled) { background: #219150; }
@@ -37,31 +44,28 @@
         .premium-desc { font-size: 0.85rem; color: #666; margin-bottom: 15px; }
         .premium-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
         .premium-box { 
-            background: #ecf0f1; 
-            border: 1px solid #bdc3c7; 
-            padding: 10px 5px; 
-            border-radius: 5px; 
-            text-align: center; 
-            font-size: 0.75rem; 
-            color: #2c3e50; 
-            text-decoration: none; 
-            transition: all 0.2s; 
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background: #ecf0f1; border: 1px solid #bdc3c7; padding: 10px 5px; border-radius: 5px; 
+            text-align: center; font-size: 0.75rem; color: #2c3e50; text-decoration: none; 
+            transition: all 0.2s; font-weight: bold; display: flex; align-items: center; justify-content: center;
         }
         .premium-box:hover { background: #2c3e50; color: white; border-color: #2c3e50; }
         
         .loading { text-align: center; color: #666; display: none; margin-top: 20px; }
+        #results { flex-grow: 1; }
     </style>
 </head>
 <body>
 
     <div id="sidebar">
         <h1><span class="brand">AgriTerra</span> Scout <span class="badge">OHIO</span></h1>
+        
+        <div class="search-container">
+            <input type="text" id="addressInput" placeholder="Enter Ohio address or zip..." />
+            <button id="searchBtn">Find</button>
+        </div>
+
         <p class="instruction">
-            1. Use the toolbar on the left to <strong>draw a shape</strong> around an Ohio parcel.<br>
+            1. Find your location, then use the toolbar to <strong>draw a shape</strong> around a parcel.<br>
             2. Click "Generate Report" to evaluate the land.
         </p>
         
@@ -85,36 +89,55 @@
         // 1. Initialize Map (Locked to Ohio with Satellite Toggle)
         var ohioBounds = [[38.401, -84.820], [41.977, -80.518]];
         
-        var streetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
-            attribution: '&copy; OpenStreetMap' 
-        });
+        var streetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' });
+        var satelliteMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri' });
 
-        var satelliteMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri'
-        });
+        var map = L.map('map', { center: [40.417, -82.907], zoom: 7, minZoom: 7, maxBounds: ohioBounds, maxBoundsViscosity: 1.0, layers: [streetMap] });
 
-        var map = L.map('map', { 
-            center: [40.417, -82.907], 
-            zoom: 7, 
-            minZoom: 7, 
-            maxBounds: ohioBounds, 
-            maxBoundsViscosity: 1.0,
-            layers: [streetMap]
-        });
+        L.control.layers({ "Street Map": streetMap, "Satellite View": satelliteMap }).addTo(map);
 
-        // Add layer control toggle
-        L.control.layers({
-            "Street Map": streetMap,
-            "Satellite View": satelliteMap
-        }).addTo(map);
-
-        // Fetch Ohio County Lines
         fetch('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json')
             .then(r => r.json())
             .then(data => {
                 const ohioCounties = { type: "FeatureCollection", features: data.features.filter(f => f.id && f.id.startsWith("39")) };
                 L.geoJSON(ohioCounties, { style: { color: "#34495e", weight: 1.5, opacity: 0.6, dashArray: '4, 4', fillOpacity: 0 }, interactive: false }).addTo(map);
             });
+
+        // --- NEW: Handle Address Search ---
+        document.getElementById('searchBtn').addEventListener('click', async () => {
+            const query = document.getElementById('addressInput').value;
+            if (!query) return;
+
+            const btn = document.getElementById('searchBtn');
+            btn.innerText = '...';
+            
+            try {
+                // Fetch coordinates using OpenStreetMap's free geocoder. We append ", Ohio" to constrain results.
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Ohio')}`);
+                const data = await res.json();
+                
+                if (data && data.length > 0) {
+                    const lat = parseFloat(data[0].lat);
+                    const lon = parseFloat(data[0].lon);
+                    
+                    // Fly to location and zoom in tight (zoom level 15)
+                    map.flyTo([lat, lon], 15, { duration: 1.5 });
+                } else {
+                    alert("Address not found. Please try adding a city or zip code.");
+                }
+            } catch (error) {
+                console.error("Search error:", error);
+                alert("An error occurred while searching.");
+            } finally {
+                btn.innerText = 'Find';
+            }
+        });
+
+        // Allow pressing "Enter" in the search box
+        document.getElementById('addressInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') document.getElementById('searchBtn').click();
+        });
+        // -----------------------------------
 
         // 2. Add Drawing Controls
         var drawnItems = new L.FeatureGroup();
@@ -223,7 +246,6 @@
                 `;
 
                 // --- RENDER PREMIUM UPSELL SECTION ---
-                // Replace the "https://yourwebsite.com/inquiry" links with your actual form URL
                 html += `
                     <div class="premium-header">Unlock Deep Analysis</div>
                     <p class="premium-desc">Need more than a quick scan? Request a comprehensive, farmer-ready AgriTerra report for this exact parcel.</p>
