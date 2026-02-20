@@ -3,14 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Success - AgriTerra</title>
+    <title>Success - AgriTerra Land Scout</title>
     
     <script src="config.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
     <script>
         (function() {
             const gaId = window.AGRI_CONFIG?.GA_MEASUREMENT_ID;
+            const clarityId = window.AGRI_CONFIG?.CLARITY_ID;
+            
             if (gaId) {
                 const s = document.createElement('script'); s.async = true;
                 s.src = "https://www.googletagmanager.com/gtag/js?id=" + gaId;
@@ -19,33 +22,117 @@
                 function gtag(){dataLayer.push(arguments);}
                 gtag('js', new Date());
                 gtag('config', gaId);
-                // LOG THE CONVERSION
-                gtag('event', 'generate_lead', { 'event_category': 'engagement', 'event_label': 'AgriTerra Scout' });
+                
+                // CRITICAL: Fire the Conversion Event
+                gtag('event', 'conversion', {
+                    'send_to': gaId,
+                    'event_category': 'Leads',
+                    'event_label': 'AgriTerra Scout Form'
+                });
                 window.gtag = gtag;
+            }
+
+            if (clarityId) {
+                (function(c,l,a,r,i,t,y){
+                    c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+                })(window, document, "clarity", "script", clarityId);
             }
         })();
     </script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
-        .card { background: white; padding: 50px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 450px; }
-        .check { font-size: 4rem; color: #27ae60; }
-        h1 { color: #2c3e50; }
-        p { color: #666; margin-bottom: 30px; }
-        .btn { background: #27ae60; color: white; padding: 12px 25px; border-radius: 5px; text-decoration: none; font-weight: bold; }
+        :root { --brand-green: #27ae60; --dark-slate: #2c3e50; }
+        
+        body { 
+            margin: 0; 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            background: #f4f7f6; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            color: var(--dark-slate);
+        }
+
+        .success-card { 
+            background: white; 
+            padding: 50px 40px; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+            max-width: 480px; 
+            text-align: center;
+            border-top: 8px solid var(--brand-green);
+        }
+
+        .icon-circle {
+            width: 80px;
+            height: 80px;
+            background: #e8f6ef;
+            color: var(--brand-green);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            margin: 0 auto 25px auto;
+        }
+
+        h1 { margin: 0 0 15px 0; font-size: 1.8rem; }
+        p { color: #64748b; font-size: 1.1rem; line-height: 1.5; margin-bottom: 35px; }
+        
+        .btn-return { 
+            background: var(--brand-green); 
+            color: white; 
+            text-decoration: none; 
+            padding: 16px 32px; 
+            border-radius: 8px; 
+            font-weight: bold; 
+            display: inline-block;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.2);
+        }
+
+        .btn-return:hover { 
+            background: #219150; 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        .footer-note {
+            margin-top: 40px;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            border-top: 1px solid #edf2f7;
+            padding-top: 20px;
+        }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div class="check">✓</div>
-        <h1>Request Received!</h1>
-        <p>An AgriTerra specialist will review your parcel data and contact you within 2 business days.</p>
-        <a href="index.html" class="btn">Return to Map</a>
+
+    <div class="success-card">
+        <div class="icon-circle">✓</div>
+        <h1>Analysis Requested!</h1>
+        <p>Thank you. Your parcel coordinates and soil data have been securely transmitted to our Ohio agricultural specialists.</p>
+        
+        <a href="index.html" class="btn-return">Return to Scout Map</a>
+
+        <div class="footer-note">
+            An AgriTerra consultant will contact you within 24-48 business hours with your verified physical and regulatory findings.
+        </div>
     </div>
 
     <script>
-        // Celebrate!
-        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#27ae60', '#2c3e50', '#f1c40f'] });
+        // Trigger celebration on load
+        window.addEventListener('load', () => {
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#27ae60', '#2c3e50', '#f1c40f']
+            });
+        });
     </script>
 </body>
 </html>
