@@ -48,7 +48,7 @@
         
         <div id="loading" class="loading">
             Analyzing Ohio parcel...<br>
-            <small>(Querying NREL databases)</small>
+            <small>(Fetching Solar & Hourly Wind Data)</small>
         </div>
 
         <div id="results"></div>
@@ -62,70 +62,26 @@
 
     <script>
         // 1. Initialize Map (Locked to Ohio)
-        var ohioBounds = [
-            [38.401, -84.820], // Southwest Corner
-            [41.977, -80.518]  // Northeast Corner
-        ];
-
-        var map = L.map('map', {
-            center: [40.417, -82.907], // Center of Ohio
-            zoom: 7,                   
-            minZoom: 7,                
-            maxBounds: ohioBounds,     
-            maxBoundsViscosity: 1.0    
-        });
+        var ohioBounds = [[38.401, -84.820], [41.977, -80.518]];
+        var map = L.map('map', { center: [40.417, -82.907], zoom: 7, minZoom: 7, maxBounds: ohioBounds, maxBoundsViscosity: 1.0 });
         
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
 
-        // --- NEW: Add Ohio County Lines ---
-        // Fetch a public US counties dataset and filter for Ohio (FIPS code starting with '39')
+        // Fetch Ohio County Lines
         fetch('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json')
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
-                const ohioCounties = {
-                    type: "FeatureCollection",
-                    features: data.features.filter(f => f.id && f.id.startsWith("39"))
-                };
-
-                L.geoJSON(ohioCounties, {
-                    style: {
-                        color: "#34495e", // Dark gray
-                        weight: 1.5,      // Thin lines
-                        opacity: 0.6,     // Semi-transparent
-                        dashArray: '4, 4',// Dashed lines to differentiate from drawn shapes
-                        fillOpacity: 0    // Transparent inside so you can still see the map
-                    },
-                    interactive: false    // Prevents lines from blocking drawing clicks
-                }).addTo(map);
-            })
-            .catch(err => console.error("Error loading county lines:", err));
-        // -----------------------------------
+                const ohioCounties = { type: "FeatureCollection", features: data.features.filter(f => f.id && f.id.startsWith("39")) };
+                L.geoJSON(ohioCounties, { style: { color: "#34495e", weight: 1.5, opacity: 0.6, dashArray: '4, 4', fillOpacity: 0 }, interactive: false }).addTo(map);
+            });
 
         // 2. Add Drawing Controls
         var drawnItems = new L.FeatureGroup();
         map.addLayer(drawnItems);
-
-        var drawControl = new L.Control.Draw({
-            draw: {
-                polygon: true,
-                marker: false,
-                circle: false,
-                circlemarker: false,
-                polyline: false,
-                rectangle: true
-            },
-            edit: {
-                featureGroup: drawnItems,
-                remove: true
-            }
-        });
+        var drawControl = new L.Control.Draw({ draw: { polygon: true, marker: false, circle: false, circlemarker: false, polyline: false, rectangle: true }, edit: { featureGroup: drawnItems, remove: true }});
         map.addControl(drawControl);
 
-        // 3. Handle Draw Events
         let currentLayer = null;
-
         map.on(L.Draw.Event.CREATED, function (e) {
             drawnItems.clearLayers();
             currentLayer = e.layer;
@@ -152,7 +108,6 @@
             
             const center = currentLayer.getBounds().getCenter();
             
-            // Security check: Make absolutely sure the drawn center is in Ohio
             if (center.lat < 38.4 || center.lat > 42.0 || center.lng < -84.8 || center.lng > -80.5) {
                 loading.style.display = 'none';
                 resultsDiv.innerHTML = `<div style="color:red; margin-top:10px;">Error: Parcel must be located within Ohio.</div>`;
@@ -164,19 +119,52 @@
             const acres = (areaSqMeters * 0.000247105).toFixed(1);
 
             try {
-                // --- API CALL: NREL Solar Data ---
-                const solarUrl = `https://developer.nrel.gov/api/pvwatts/v8.json?api_key=DEMO_KEY&lat=${center.lat}&lon=${center.lng}&system_capacity=4&azimuth=180&tilt=20&array_type=1&module_type=0&losses=14`;
-                
+                // --- API CALL 1: NREL Solar Data ---
+                const solarUrl = `https://developer.nrel.gov/api/pvwatts/v8.json?api_key=PLVvOusL7wjyAy2ZMcd0MFroNaL8sGI3hguxkHkm&lat=${center.lat}&lon=${center.lng}&system_capacity=4&azimuth=180&tilt=20&array_type=1&module_type=0&losses=14`;
                 const solarResponse = await fetch(solarUrl);
                 const solarData = await solarResponse.json();
-                
                 const solarOutput = solarData.outputs ? Math.round(solarData.outputs.ac_annual) : "N/A";
                 const solarValue = solarOutput !== "N/A" ? `$${Math.round(solarOutput * 0.14)}` : "N/A"; 
 
-                // --- OHIO MOCK CALL: Wind Potential ---
-                let windScore = "Moderate";
-                if (center.lat > 41.2) windScore = "High (Lake Erie proximity)";
-                else if (center.lat < 39.5) windScore = "Low (Southern Topography)";
+                // --- API CALL 2: NREL Wind Toolkit ---
+                // Fetching a full representative year (2014) of hourly data at 80m hub height.
+                const windUrl = `https://developer.nrel.gov/api/wind-toolkit/v2/wind/wtk-download.csv?api_key=PLVvOusL7wjyAy2ZMcd0MFroNaL8sGI3hguxkHkm&wkt=POINT(${center.lng}%20${center.lat})&attributes=windspeed_80m&names=2014&email=tim@horizontwolabs.com`;
+                
+                let windValueText = "Data Unavailable";
+                let windGrade = "Unknown";
+                
+                const windResponse = await fetch(windUrl);
+                if (windResponse.ok) {
+                    const windCsv = await windResponse.text();
+                    const lines = windCsv.split('\n');
+                    
+                    let totalSpeed = 0;
+                    let count = 0;
+                    
+                    // NREL CSVs have 2 header rows. Data starts at row 3 (index 2).
+                    for (let i = 2; i < lines.length; i++) {
+                        const cols = lines[i].split(',');
+                        // Wind speed is the 6th column (Index 5) after Year, Month, Day, Hour, Minute
+                        if (cols.length >= 6) {
+                            const speed = parseFloat(cols[5]);
+                            if (!isNaN(speed)) {
+                                totalSpeed += speed;
+                                count++;
+                            }
+                        }
+                    }
+                    
+                    if (count > 0) {
+                        const avgWindSpeed = (totalSpeed / count).toFixed(2);
+                        windValueText = `${avgWindSpeed} <span class="metric-unit">m/s</span>`;
+                        
+                        // Grade the wind resource (Industry standards at 80m)
+                        if (avgWindSpeed >= 7.5) windGrade = "Excellent (Utility Scale)";
+                        else if (avgWindSpeed >= 6.5) windGrade = "Good (Community/Farm Scale)";
+                        else if (avgWindSpeed >= 5.5) windGrade = "Moderate (Small Scale)";
+                        else windGrade = "Low (Not Recommended)";
+                    }
+                }
 
                 // --- RENDER RESULTS ---
                 const html = `
@@ -187,7 +175,7 @@
                     </div>
 
                     <div class="report-card card-solar">
-                        <div class="metric-title">Solar Potential</div>
+                        <div class="metric-title">Solar Potential (PVWatts)</div>
                         <div class="metric-value">${solarOutput.toLocaleString()} <span class="metric-unit">kWh/yr</span></div>
                         <p style="font-size: 0.9rem; margin: 5px 0 0 0;">
                             Est. Energy Value: <strong>${solarValue}/yr</strong><br>
@@ -196,10 +184,11 @@
                     </div>
 
                     <div class="report-card card-wind">
-                        <div class="metric-title">Wind Suitability</div>
-                        <div class="metric-value">${windScore}</div>
+                        <div class="metric-title">Wind Suitability (80m Hub Height)</div>
+                        <div class="metric-value">${windValueText}</div>
                         <p style="font-size: 0.9rem; margin: 5px 0 0 0;">
-                            <small>Based on Ohio regional wind data estimates.</small>
+                            Rating: <strong>${windGrade}</strong><br>
+                            <small>Based on NREL Wind Toolkit annual averages.</small>
                         </p>
                     </div>
 
@@ -207,7 +196,7 @@
                         <div class="metric-title">CAUV & Conservation</div>
                         <div class="metric-value">Pending</div>
                         <p style="font-size: 0.9rem; margin: 5px 0 0 0;">
-                            Data connection to Ohio Department of Taxation CAUV values required for this module.
+                            Data connection to Ohio Department of Taxation CAUV values required.
                         </p>
                     </div>
                 `;
@@ -216,7 +205,7 @@
 
             } catch (error) {
                 console.error(error);
-                resultsDiv.innerHTML = `<div style="color:red; margin-top:10px;">Error fetching data. Please try again.</div>`;
+                resultsDiv.innerHTML = `<div style="color:red; margin-top:10px;">Error fetching data. Check network or API limits.</div>`;
             } finally {
                 loading.style.display = 'none';
             }
