@@ -19,13 +19,15 @@
         .insight-section h2 { color: #2c3e50; font-size: 1.3rem; margin-bottom: 10px; }
         
         .cta-box { background: #2c3e50; color: white; padding: 25px; border-radius: 8px; text-align: center; margin-top: 40px; }
-        .btn { background: #27ae60; color: white; text-decoration: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; display: inline-block; margin-top: 15px; transition: background 0.2s; }
+        .btn { background: #27ae60; color: white; text-decoration: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; display: inline-block; margin-top: 15px; transition: background 0.2s; cursor: pointer; border: none; font-size: 1rem; }
         .btn:hover { background: #219150; }
+        
+        .loader { font-style: italic; color: #7f8c8d; }
         
         @media print {
             body { background: white; padding: 0; }
             .report-container { box-shadow: none; max-width: 100%; padding: 0; }
-            .cta-box { display: none; } /* Hide the upsell box when printing */
+            .cta-box { display: none; }
         }
     </style>
 </head>
@@ -49,117 +51,140 @@
         </div>
 
         <div id="dynamicContent">
-            <p>Analyzing parcel data...</p>
+            <p class="loader">Accessing USDA National Soil Information System...</p>
         </div>
 
         <div class="cta-box">
             <h3>Want the Official Farm Bureau Report?</h3>
             <p>This is just a surface-level scan. Get the complete, deep-dive evaluation of this exact parcel sent straight to your inbox.</p>
-            <a href="#" class="btn" onclick="window.print(); return false;">Print This Teaser</a>
-            <a href="mailto:contact@yourwebsite.com" class="btn">Request Full Report</a>
+            <button class="btn" onclick="window.print();">Print This Teaser</button>
+            <a href="mailto:contact@agriterra.io" class="btn">Request Full Report</a>
         </div>
     </div>
 
     <script>
-        // 1. Get today's date
-        document.getElementById('currentDate').innerText = new Date().toLocaleDateString();
+        // Use an async function so we can wait for the USDA API to respond
+        async function buildReport() {
+            document.getElementById('currentDate').innerText = new Date().toLocaleDateString();
 
-        // 2. Extract data from the URL
-        const params = new URLSearchParams(window.location.search);
-        const acres = params.get('acres') || "Unknown";
-        const lat = parseFloat(params.get('lat'));
-        const lng = parseFloat(params.get('lng'));
-        const topic = params.get('topic') || "insights"; // Default to insights if missing
+            const params = new URLSearchParams(window.location.search);
+            const acres = params.get('acres') || "Unknown";
+            const lat = parseFloat(params.get('lat'));
+            const lng = parseFloat(params.get('lng'));
+            const topic = params.get('topic') || "insights";
 
-        // 3. Format topic for display
-        const displayTitles = {
-            'property': 'Property Information',
-            'physical': 'Physical Characteristics',
-            'regulatory': 'Regulatory Context',
-            'infrastructure': 'Infrastructure Proximity',
-            'ag_value': 'Agricultural Value',
-            'market': 'Market Context',
-            'risks': 'Risks & Trade-Offs',
-            'insights': 'Plain-Language Insights'
-        };
-        const niceTitle = displayTitles[topic] || 'Land Report';
+            const displayTitles = {
+                'property': 'Property Information',
+                'physical': 'Physical Characteristics',
+                'regulatory': 'Regulatory Context',
+                'infrastructure': 'Infrastructure Proximity',
+                'ag_value': 'Agricultural Value',
+                'market': 'Market Context',
+                'risks': 'Risks & Trade-Offs',
+                'insights': 'Plain-Language Insights'
+            };
+            const niceTitle = displayTitles[topic] || 'Land Report';
 
-        // 4. Populate the top meta boxes
-        document.getElementById('displayAcres').innerText = `${acres} Acres`;
-        document.getElementById('displayTopic').innerText = niceTitle;
-        if (!isNaN(lat) && !isNaN(lng)) {
+            document.getElementById('displayAcres').innerText = `${acres} Acres`;
+            document.getElementById('displayTopic').innerText = niceTitle;
+            
+            const contentDiv = document.getElementById('dynamicContent');
+            
+            if (isNaN(lat) || isNaN(lng)) {
+                contentDiv.innerHTML = `<p style="color:red;">Error: Missing location data.</p>`;
+                return;
+            }
+            
             document.getElementById('displayCoords').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-        }
 
-        // 5. Generate Custom Content based on the EXACT button clicked
-        const contentDiv = document.getElementById('dynamicContent');
-        
-        if (isNaN(lat) || isNaN(lng)) {
-            contentDiv.innerHTML = `<p style="color:red;">Error: Missing location data. Please return to the map and draw a parcel.</p>`;
-        } else {
-            // Determine Region
             let region = "Central Ohio";
             if (lat > 40.5 && lng < -83.0) region = "Northwest Ohio (Till Plains)";
             if (lat < 39.8 && lng > -82.5) region = "Southeast Ohio (Appalachian Foothills)";
 
+            // --- FETCH LIVE USDA SOIL DATA ---
+            let soilMapUnit = "Pending Soil Analysis";
+            let soilDrainage = "Pending";
+            let farmlandClass = "Pending Classification";
+
+            try {
+                // We ask the USDA Database to intersect our exact GPS point and return the top soil component
+                const sdaQuery = `
+                    SELECT TOP 1 MU.muname, C.drainagecl, C.farmlndcl 
+                    FROM mapunit MU 
+                    INNER JOIN component C ON MU.mukey = C.mukey 
+                    INNER JOIN SDA_Get_Mukey_from_intersection_with_WktWgs84('POINT(${lng} ${lat})') as SDA 
+                    ON SDA.mukey = MU.mukey 
+                    ORDER BY C.comppct_r DESC
+                `;
+                
+                const sdaResponse = await fetch('https://SDMDataAccess.sc.egov.usda.gov/Tabular/post.rest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ query: sdaQuery, format: "JSON" })
+                });
+                
+                const sdaData = await sdaResponse.json();
+                
+                // If USDA returns data, overwrite our placeholder variables
+                if (sdaData && sdaData.Table && sdaData.Table.length > 0) {
+                    const row = sdaData.Table[0];
+                    soilMapUnit = row[0] || soilMapUnit;
+                    soilDrainage = row[1] || soilDrainage;
+                    farmlandClass = row[2] || farmlandClass;
+                }
+            } catch (error) {
+                console.error("USDA API Error:", error);
+            }
+
+            // --- GENERATE SMART NARRATIVE ---
             let narrative = '';
 
-            // This SWITCH statement picks the right paragraphs based on the button clicked!
             switch(topic) {
-                case 'property':
-                    narrative = `
-                        <h2>Property Boundaries & Jurisdiction</h2>
-                        <p>This <strong>${acres}-acre</strong> parcel is situated in the ${region} area. At this size, the property is large enough to be registered independently for county tax purposes. An official AgriTerra property scan will pull the exact parcel ID (APN), current ownership records, and historical deed transfers.</p>
-                    `;
-                    break;
                 case 'physical':
                     narrative = `
                         <h2>Topography & Soil Health</h2>
-                        <p>Physical characteristics dictate the highest and best use of this land. Located at coordinates ${lat.toFixed(3)}, ${lng.toFixed(3)}, the next step is to evaluate the slope percentage and drainage class. An official AgriTerra physical scan integrates USDA soil composition data to determine if this land is dominated by prime farmland soils or highly erodible land (HEL).</p>
-                    `;
-                    break;
-                case 'regulatory':
-                    narrative = `
-                        <h2>Zoning & Setback Requirements</h2>
-                        <p>Navigating the regulatory landscape in ${region} is crucial. For a <strong>${acres}-acre</strong> parcel, county zoning ordinances will dictate allowable structures, minimum road frontages, and renewable energy setbacks. An official report will detail local solar/wind moratoriums, CAUV eligibility, and EPA wetland compliance.</p>
-                    `;
-                    break;
-                case 'infrastructure':
-                    narrative = `
-                        <h2>Grid Access & Roadways</h2>
-                        <p>Alternative uses for this ${acres}-acre site—like solar leases—require specific infrastructure. Is this parcel within 2 miles of a 69kV transmission line? Is it accessible via a county-maintained paved road capable of handling heavy equipment? Our full report maps the distance to the nearest substations and public utilities.</p>
+                        <p>Physical characteristics dictate the highest and best use of this land. According to the USDA Natural Resources Conservation Service (NRCS), the dominant soil map unit at this exact location is <strong>${soilMapUnit}</strong>.</p>
+                        <p>This soil profile is officially classified as <strong>${soilDrainage.toLowerCase()}</strong>. From an agricultural valuation standpoint, the USDA designates this specific dirt as: <em>"${farmlandClass}"</em>.</p>
+                        <p>An official AgriTerra physical scan will further evaluate the slope percentage, highly erodible land (HEL) status, and precise corn/soybean yield indexes for this exact ${acres}-acre footprint.</p>
                     `;
                     break;
                 case 'ag_value':
                     narrative = `
                         <h2>Cash Rent & Yield Potential</h2>
-                        <p>For agricultural valuation, size and region matter. This ${acres}-acre footprint in ${region} has a specific baseline value based on county-wide average cash rent and historical corn/soybean yields. The official AgriTerra valuation evaluates soil productivity indexes (NCCPI) to estimate fair-market lease rates.</p>
+                        <p>For agricultural valuation, underlying soil quality is the baseline. This ${acres}-acre footprint in ${region} sits primarily on <strong>${soilMapUnit}</strong>.</p>
+                        <p>Because the USDA classifies this as <em>"${farmlandClass}"</em>, its cash rent potential is highly dependent on modern tiling and nutrient management. The official AgriTerra valuation evaluates the Soil Productivity Index (NCCPI) for this specific soil type to estimate fair-market lease rates.</p>
                     `;
+                    break;
+                case 'property':
+                    narrative = `<h2>Property Boundaries & Jurisdiction</h2><p>This <strong>${acres}-acre</strong> parcel is situated in the ${region} area. At this size, the property is large enough to be registered independently for county tax purposes. An official AgriTerra property scan will pull the exact parcel ID (APN), current ownership records, and historical deed transfers.</p>`;
+                    break;
+                case 'regulatory':
+                    narrative = `<h2>Zoning & Setback Requirements</h2><p>Navigating the regulatory landscape in ${region} is crucial. For a <strong>${acres}-acre</strong> parcel, county zoning ordinances will dictate allowable structures, minimum road frontages, and renewable energy setbacks. An official report will detail local solar/wind moratoriums, CAUV eligibility, and EPA wetland compliance.</p>`;
+                    break;
+                case 'infrastructure':
+                    narrative = `<h2>Grid Access & Roadways</h2><p>Alternative uses for this ${acres}-acre site—like solar leases—require specific infrastructure. Is this parcel within 2 miles of a 69kV transmission line? Is it accessible via a county-maintained paved road? Our full report maps the distance to the nearest substations and public utilities.</p>`;
                     break;
                 case 'market':
-                    narrative = `
-                        <h2>Local Land Comps & Development Pressure</h2>
-                        <p>What is land actually selling for right now near ${lat.toFixed(3)}, ${lng.toFixed(3)}? Market context goes beyond CAUV. Our deep-dive report analyzes recent comparable sales of similarly sized (${acres} acre) agricultural parcels in the county and assesses the 5-year urban development pressure encroaching on this area.</p>
-                    `;
+                    narrative = `<h2>Local Land Comps & Development Pressure</h2><p>What is land actually selling for right now near ${lat.toFixed(3)}, ${lng.toFixed(3)}? Market context goes beyond CAUV. Our deep-dive report analyzes recent comparable sales of similarly sized (${acres} acre) agricultural parcels in the county and assesses the 5-year urban development pressure encroaching on this area.</p>`;
                     break;
                 case 'risks':
-                    narrative = `
-                        <h2>Evaluating Trade-Offs</h2>
-                        <p>Every land-use change carries risk. If you transition this ${acres}-acre parcel out of active production, what are the CAUV recoupment penalties? Are there FEMA flood zones overlapping these coordinates? The official AgriTerra risk report identifies these hidden liabilities before you sign a lease.</p>
-                    `;
+                    narrative = `<h2>Evaluating Trade-Offs</h2><p>Every land-use change carries risk. If you transition this ${acres}-acre parcel out of active production, what are the CAUV recoupment penalties? Are there FEMA flood zones overlapping these coordinates? The official AgriTerra risk report identifies these hidden liabilities before you sign a lease.</p>`;
                     break;
                 case 'insights':
                 default:
                     narrative = `
                         <h2>The Bottom Line</h2>
-                        <p>Located in the <strong>${region}</strong> region, this ${acres}-acre property presents a unique blend of agricultural baseline value and potential alternative use cases. It is large enough to support meaningful cash crop rotation or specific conservation easements, but its true highest-and-best-use will depend on deep-dive analysis into local zoning and soil composition.</p>
+                        <p>Located in the <strong>${region}</strong> region, this ${acres}-acre property presents a unique blend of agricultural baseline value and potential alternative use cases.</p>
+                        <p>USDA soil data indicates the land is predominantly <strong>${soilMapUnit}</strong> (${farmlandClass}). It is large enough to support meaningful cash crop rotation or specific conservation easements, but its true highest-and-best-use will depend on deep-dive analysis into local zoning and soil composition.</p>
                     `;
                     break;
             }
 
-            // Add the generated narrative to the page
             contentDiv.innerHTML = `<div class="insight-section">${narrative}</div>`;
         }
+
+        // Trigger the async function when the page loads
+        buildReport();
     </script>
 </body>
 </html>
