@@ -65,7 +65,24 @@
         var ohioBounds = [[38.401, -84.820], [41.977, -80.518]];
         var map = L.map('map', { center: [40.417, -82.907], zoom: 7, minZoom: 7, maxBounds: ohioBounds, maxBoundsViscosity: 1.0 });
         
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
+        // Define Base Layers
+        var streetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+            attribution: '&copy; OpenStreetMap' 
+        });
+
+        var satelliteMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri'
+        });
+
+        // Add default layer to map
+        streetMap.addTo(map);
+
+        // Add the toggle control to the top right of the map
+        var baseMaps = {
+            "Street Map": streetMap,
+            "Satellite View": satelliteMap
+        };
+        L.control.layers(baseMaps).addTo(map);
 
         // Fetch Ohio County Lines
         fetch('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json')
