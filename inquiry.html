@@ -16,11 +16,11 @@
         label { display: block; font-weight: bold; margin-bottom: 5px; color: #2c3e50; font-size: 0.9rem; }
         input[type="text"], input[type="email"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 1rem; box-sizing: border-box; }
         
-        /* Style for pre-filled, uneditable fields to show they are "locked" */
         input[readonly] { background-color: #ecf0f1; color: #7f8c8d; border: 1px solid #bdc3c7; cursor: not-allowed; }
 
         .btn { background: #27ae60; color: white; border: none; padding: 15px; border-radius: 5px; font-weight: bold; width: 100%; font-size: 1.1rem; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
         .btn:hover { background: #219150; }
+        .btn:disabled { background: #95a5a6; cursor: wait; }
         
         .disclaimer { font-size: 0.8rem; color: #7f8c8d; text-align: center; margin-top: 15px; }
     </style>
@@ -35,6 +35,8 @@
 
         <form id="agriterraForm" action="https://formspree.io/f/xdalljoz" method="POST">
             
+            <input type="hidden" name="_next" value="https://scout.agriterra.io/thank-you.html">
+
             <div class="form-group">
                 <label for="fullName">Full Name</label>
                 <input type="text" id="fullName" name="Name" placeholder="Jane Doe" required>
@@ -67,22 +69,19 @@
                 <input type="text" id="coords" name="Coordinates" readonly>
             </div>
 
-            <button type="submit" class="btn">Submit Request</button>
+            <button type="submit" id="submitBtn" class="btn">Submit Request</button>
             <p class="disclaimer">A representative will contact you within 1-2 business days with your customized land report.</p>
         </form>
     </div>
 
     <script>
-        // Use JavaScript's built-in URLSearchParams to read the web address
         const params = new URLSearchParams(window.location.search);
         
-        // Grab the data from the URL
         const rawTopic = params.get('topic') || "General Inquiry";
         const acres = params.get('acres') || "Unknown";
         const lat = params.get('lat') || "Unknown";
         const lng = params.get('lng') || "Unknown";
 
-        // Clean up the topic name for the form (e.g., turn "ag_value" into "Agricultural Value")
         const displayTitles = {
             'property': 'Property Information',
             'physical': 'Physical Characteristics',
@@ -93,12 +92,17 @@
             'risks': 'Risks & Trade-Offs',
             'insights': 'Plain-Language Insights'
         };
-        const cleanTopic = displayTitles[rawTopic] || rawTopic;
-
-        // Automatically inject the data directly into the HTML input fields!
-        document.getElementById('topic').value = cleanTopic;
+        
+        document.getElementById('topic').value = displayTitles[rawTopic] || rawTopic;
         document.getElementById('acres').value = acres;
         document.getElementById('coords').value = `${lat}, ${lng}`;
+
+        // UX Polish: Change button text when clicked so they know it's working
+        document.getElementById('agriterraForm').addEventListener('submit', function() {
+            const btn = document.getElementById('submitBtn');
+            btn.innerText = 'Sending Request...';
+            btn.disabled = true;
+        });
     </script>
 
 </body>
