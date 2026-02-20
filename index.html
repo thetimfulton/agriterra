@@ -17,13 +17,30 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
     
     <style>
-        :root { --brand-green: #27ae60; --dark-slate: #2c3e50; }
-        
-        body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
-        
-        #map { flex-grow: 1; width: 100%; z-index: 1; }
-        
-        /* Sidebar/Panel Logic */
+        /* FIX: Touch-friendly Drawing Tools without breaking icons */
+        .leaflet-draw-section {
+            margin-top: 10px !important;
+            margin-left: 10px !important;
+        }
+
+        .leaflet-draw-toolbar a {
+            width: 44px !important;
+            height: 44px !important;
+            background-color: white !important;
+            background-size: 270px 30px !important; /* Adjusts the sprite scale to match new size */
+            border-bottom: 1px solid #ccc !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Adjusting the specific background positions for the larger buttons */
+        .leaflet-draw-draw-polygon { background-position: -27px -1px !important; }
+        .leaflet-draw-draw-rectangle { background-position: -58px -1px !important; }
+        .leaflet-draw-edit-edit { background-position: -145px -1px !important; }
+        .leaflet-draw-edit-remove { background-position: -175px -1px !important; }
+
+        /* Mobile vs Desktop Layout Logic */
         #sidebar { 
             width: 100%; max-height: 45vh; background: #f8f9fa; 
             box-shadow: 0 -4px 15px rgba(0,0,0,0.15); z-index: 1000; 
@@ -31,7 +48,6 @@
             border-top-left-radius: 15px; border-top-right-radius: 15px;
         }
 
-        /* Snap to Desktop Sidebar at 768px wide */
         @media (min-width: 768px) {
             body { flex-direction: row; }
             #sidebar { 
@@ -40,42 +56,6 @@
             }
             #map { height: 100%; }
         }
-
-        /* Mobile Touch Target Fixes */
-        .leaflet-draw-toolbar a {
-            width: 44px !important; height: 44px !important; line-height: 44px !important;
-            background-size: 300% 200% !important; border-radius: 6px !important;
-            background-color: white !important; box-shadow: 0 2px 5px rgba(0,0,0,0.2) !important;
-        }
-
-        h1 { color: var(--dark-slate); font-size: 1.4rem; margin: 0 0 5px 0; }
-        .brand { color: var(--brand-green); font-weight: bold; }
-        .badge { background: #e74c3c; color: white; font-size: 0.7rem; padding: 3px 6px; border-radius: 4px; vertical-align: middle; }
-        
-        .search-container { display: flex; gap: 8px; margin-bottom: 20px; margin-top: 10px; }
-        .search-container input { flex-grow: 1; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
-        .search-container button { background: var(--dark-slate); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-
-        .btn { background: var(--brand-green); color: white; border: none; padding: 16px; border-radius: 8px; cursor: pointer; width: 100%; font-size: 1.1rem; font-weight: bold; }
-        .btn:disabled { background: #cbd5e0; }
-
-        /* Report Cards (Restored from Desktop Version) */
-        .report-card { background: white; border-radius: 8px; padding: 15px; margin-top: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid #ddd; }
-        .card-solar { border-left-color: #f1c40f; }
-        .card-conservation { border-left-color: var(--brand-green); }
-        .metric-title { font-weight: bold; font-size: 0.8rem; text-transform: uppercase; color: #7f8c8d; }
-        .metric-value { font-size: 1.4rem; font-weight: bold; color: var(--dark-slate); }
-
-        /* Premium Grid (Restored 8-box Grid) */
-        .premium-header { margin-top: 25px; padding-top: 15px; border-top: 2px dashed #ccc; font-weight: bold; color: var(--dark-slate); }
-        .premium-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; margin-bottom: 20px; }
-        .premium-box { 
-            background: white; border: 1px solid #ddd; padding: 12px 5px; border-radius: 6px; 
-            text-align: center; font-size: 0.75rem; color: var(--dark-slate); text-decoration: none; 
-            font-weight: bold; display: flex; align-items: center; justify-content: center;
-        }
-
-        .loading { text-align: center; color: #666; display: none; padding: 20px; }
     </style>
 </head>
 <body>
