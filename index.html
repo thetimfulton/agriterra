@@ -5,6 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AgriTerra Land Scout - Ohio Edition</title>
     
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-WP97VS7YGP"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-WP97VS7YGP');
+    </script>
+
+    <script type="text/javascript">
+        (function(c,l,a,r,i,t,y){
+            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+        })(window, document, "clarity", "script", "YOUR_CLARITY_ID");
+    </script>
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
     
@@ -19,7 +35,6 @@
         
         .instruction { font-size: 0.9rem; color: #666; margin-bottom: 15px; }
         
-        /* Search Bar Styles */
         .search-container { display: flex; gap: 5px; margin-bottom: 20px; }
         .search-container input { flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9rem; }
         .search-container button { background: #34495e; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9rem; transition: background 0.2s; }
@@ -29,7 +44,6 @@
         .btn:disabled { background: #ccc; cursor: not-allowed; }
         .btn:hover:not(:disabled) { background: #219150; }
 
-        /* Report Cards */
         .report-card { background: white; border-radius: 8px; padding: 15px; margin-top: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid #ddd; }
         .card-solar { border-left-color: #f1c40f; }
         .card-wind { border-left-color: #3498db; }
@@ -39,7 +53,6 @@
         .metric-value { font-size: 1.5rem; font-weight: bold; color: #2c3e50; }
         .metric-unit { font-size: 0.9rem; color: #7f8c8d; }
         
-        /* Premium Upsell Section */
         .premium-header { margin-top: 25px; padding-top: 15px; border-top: 2px dashed #ccc; font-weight: bold; color: #2c3e50; font-size: 1.1rem; }
         .premium-desc { font-size: 0.85rem; color: #666; margin-bottom: 15px; }
         .premium-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
@@ -86,14 +99,12 @@
     <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
     <script>
-        // 1. Initialize Map (Locked to Ohio with Satellite Toggle)
+        // 1. Initialize Map
         var ohioBounds = [[38.401, -84.820], [41.977, -80.518]];
-        
         var streetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' });
         var satelliteMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri' });
 
         var map = L.map('map', { center: [40.417, -82.907], zoom: 7, minZoom: 7, maxBounds: ohioBounds, maxBoundsViscosity: 1.0, layers: [streetMap] });
-
         L.control.layers({ "Street Map": streetMap, "Satellite View": satelliteMap }).addTo(map);
 
         fetch('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json')
@@ -103,25 +114,18 @@
                 L.geoJSON(ohioCounties, { style: { color: "#34495e", weight: 1.5, opacity: 0.6, dashArray: '4, 4', fillOpacity: 0 }, interactive: false }).addTo(map);
             });
 
-        // --- NEW: Handle Address Search ---
+        // Handle Address Search
         document.getElementById('searchBtn').addEventListener('click', async () => {
             const query = document.getElementById('addressInput').value;
             if (!query) return;
 
             const btn = document.getElementById('searchBtn');
             btn.innerText = '...';
-            
             try {
-                // Fetch coordinates using OpenStreetMap's free geocoder. We append ", Ohio" to constrain results.
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Ohio')}`);
                 const data = await res.json();
-                
                 if (data && data.length > 0) {
-                    const lat = parseFloat(data[0].lat);
-                    const lon = parseFloat(data[0].lon);
-                    
-                    // Fly to location and zoom in tight (zoom level 15)
-                    map.flyTo([lat, lon], 15, { duration: 1.5 });
+                    map.flyTo([parseFloat(data[0].lat), parseFloat(data[0].lon)], 15, { duration: 1.5 });
                 } else {
                     alert("Address not found. Please try adding a city or zip code.");
                 }
@@ -133,11 +137,9 @@
             }
         });
 
-        // Allow pressing "Enter" in the search box
         document.getElementById('addressInput').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') document.getElementById('searchBtn').click();
         });
-        // -----------------------------------
 
         // 2. Add Drawing Controls
         var drawnItems = new L.FeatureGroup();
@@ -182,6 +184,14 @@
             const areaSqMeters = turf.area(geoJson);
             const acres = (areaSqMeters * 0.000247105).toFixed(1);
 
+            // --- TRACKING: Send GA4 Event for Generated Report ---
+            if (typeof gtag === 'function') {
+                gtag('event', 'generate_report', {
+                    'parcel_acres': acres,
+                    'state': 'Ohio'
+                });
+            }
+
             try {
                 // --- API CALL 1: NREL Solar Data ---
                 // IMPORTANT: Replace YOUR_API_KEY_HERE with your actual key!
@@ -191,27 +201,18 @@
                 const solarOutput = solarData.outputs ? Math.round(solarData.outputs.ac_annual) : "N/A";
                 const solarValue = solarOutput !== "N/A" ? `$${Math.round(solarOutput * 0.14)}` : "N/A"; 
 
-                // --- OHIO MOCK CALL: Wind Potential ---
-                let windScore = "Moderate";
-                if (center.lat > 41.2) windScore = "High (Lake Erie proximity)";
-                else if (center.lat < 39.5) windScore = "Low (Southern Topography)";
-
-                // --- OHIO MOCK CALL: CAUV & Conservation ---
-                let cauvEst = 0;
-                let conservationNotes = "";
+                // --- MOCK CALLS ---
+                let windScore = (center.lat > 41.2) ? "High (Lake Erie proximity)" : (center.lat < 39.5) ? "Low (Southern Topography)" : "Moderate";
+                let cauvEst = 0; let conservationNotes = "";
                 
                 if (center.lng < -83.0 && center.lat > 39.5) {
-                    cauvEst = Math.round(acres * 1200); 
-                    conservationNotes = "High prime farmland overlap. Minimal wetland conflict.";
+                    cauvEst = Math.round(acres * 1200); conservationNotes = "High prime farmland overlap. Minimal wetland conflict.";
                 } else if (center.lng > -83.0 && center.lat < 40.0) {
-                    cauvEst = Math.round(acres * 350); 
-                    conservationNotes = "High potential for forest management or CRP.";
+                    cauvEst = Math.round(acres * 350); conservationNotes = "High potential for forest management or CRP.";
                 } else {
-                    cauvEst = Math.round(acres * 800); 
-                    conservationNotes = "Moderate prime farmland. Evaluate riparian buffers.";
+                    cauvEst = Math.round(acres * 800); conservationNotes = "Moderate prime farmland. Evaluate riparian buffers.";
                 }
 
-                // --- RENDER LIGHT REPORT RESULTS ---
                 let html = `
                     <div class="report-card">
                         <div class="metric-title">Selected Ohio Parcel</div>
@@ -222,47 +223,41 @@
                     <div class="report-card card-solar">
                         <div class="metric-title">Solar Potential (PVWatts)</div>
                         <div class="metric-value">${solarOutput.toLocaleString()} <span class="metric-unit">kWh/yr</span></div>
-                        <p style="font-size: 0.9rem; margin: 5px 0 0 0;">
-                            Est. Energy Value: <strong>${solarValue}/yr</strong><br>
-                            <small>Based on a standard 4kW test array.</small>
-                        </p>
+                        <p style="font-size: 0.9rem; margin: 5px 0 0 0;">Est. Energy Value: <strong>${solarValue}/yr</strong></p>
                     </div>
 
                     <div class="report-card card-wind">
                         <div class="metric-title">Wind Suitability</div>
                         <div class="metric-value">${windScore}</div>
-                        <p style="font-size: 0.9rem; margin: 5px 0 0 0;">
-                            <small>Based on Ohio regional estimates.</small>
-                        </p>
                     </div>
 
                     <div class="report-card card-conservation">
                         <div class="metric-title">Est. CAUV Value & Conservation</div>
                         <div class="metric-value">$${cauvEst.toLocaleString()}</div>
-                        <p style="font-size: 0.9rem; margin: 5px 0 0 0;">
-                            <strong>Notes:</strong> ${conservationNotes}
-                        </p>
+                        <p style="font-size: 0.9rem; margin: 5px 0 0 0;"><strong>Notes:</strong> ${conservationNotes}</p>
                     </div>
                 `;
 
-                // --- RENDER PREMIUM UPSELL SECTION ---
-                // We are dynamically appending the acreage and coordinates to the URL parameters
+                // --- PREMIUM UPSELL SECTION WITH TRACKING ---
                 const baseFormUrl = "https://scout.agriterra.io/insights.html";
                 const locationData = `&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}`;
+                
+                // Helper function to inject tracking code into each button
+                const trackClick = (topicName) => `onclick="if(typeof gtag === 'function') gtag('event', 'premium_click', { 'topic_clicked': '${topicName}' });"`;
 
                 html += `
                     <div class="premium-header">Unlock Deep Analysis</div>
                     <p class="premium-desc">Need more than a quick scan? Request a comprehensive, farmer-ready AgriTerra report for this exact parcel.</p>
                     
                     <div class="premium-grid">
-                        <a href="${baseFormUrl}?topic=property${locationData}" target="_blank" class="premium-box">Property Info</a>
-                        <a href="${baseFormUrl}?topic=physical${locationData}" target="_blank" class="premium-box">Physical Characteristics</a>
-                        <a href="${baseFormUrl}?topic=regulatory${locationData}" target="_blank" class="premium-box">Regulatory Context</a>
-                        <a href="${baseFormUrl}?topic=infrastructure${locationData}" target="_blank" class="premium-box">Infrastructure Proximity</a>
-                        <a href="${baseFormUrl}?topic=ag_value${locationData}" target="_blank" class="premium-box">Agricultural Value</a>
-                        <a href="${baseFormUrl}?topic=market${locationData}" target="_blank" class="premium-box">Market Context</a>
-                        <a href="${baseFormUrl}?topic=risks${locationData}" target="_blank" class="premium-box">Risks & Trade-Offs</a>
-                        <a href="${baseFormUrl}?topic=insights${locationData}" target="_blank" class="premium-box">Plain-Language Insights</a>
+                        <a href="${baseFormUrl}?topic=property${locationData}" target="_blank" class="premium-box" ${trackClick('Property Info')}>Property Info</a>
+                        <a href="${baseFormUrl}?topic=physical${locationData}" target="_blank" class="premium-box" ${trackClick('Physical Characteristics')}>Physical Characteristics</a>
+                        <a href="${baseFormUrl}?topic=regulatory${locationData}" target="_blank" class="premium-box" ${trackClick('Regulatory Context')}>Regulatory Context</a>
+                        <a href="${baseFormUrl}?topic=infrastructure${locationData}" target="_blank" class="premium-box" ${trackClick('Infrastructure Proximity')}>Infrastructure Proximity</a>
+                        <a href="${baseFormUrl}?topic=ag_value${locationData}" target="_blank" class="premium-box" ${trackClick('Agricultural Value')}>Agricultural Value</a>
+                        <a href="${baseFormUrl}?topic=market${locationData}" target="_blank" class="premium-box" ${trackClick('Market Context')}>Market Context</a>
+                        <a href="${baseFormUrl}?topic=risks${locationData}" target="_blank" class="premium-box" ${trackClick('Risks & Trade-Offs')}>Risks & Trade-Offs</a>
+                        <a href="${baseFormUrl}?topic=insights${locationData}" target="_blank" class="premium-box" ${trackClick('Plain-Language Insights')}>Plain-Language Insights</a>
                     </div>
                 `;
                 
