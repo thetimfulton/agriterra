@@ -77,36 +77,61 @@
     </div>
 
     <script>
-        const params = new URLSearchParams(window.location.search);
-        document.getElementById('topic').value = params.get('topic') || "General Inquiry";
-        document.getElementById('acres').value = params.get('acres') || "Unknown";
-        document.getElementById('coords').value = `${params.get('lat')}, ${params.get('lng')}`;
+    // 1. Populate the hidden/readonly fields from the URL
+    const params = new URLSearchParams(window.location.search);
+    document.getElementById('topic').value = params.get('topic') || "General Inquiry";
+    document.getElementById('acres').value = params.get('acres') || "Unknown";
+    document.getElementById('coords').value = `${params.get('lat') || '--'}, ${params.get('lng') || '--'}`;
 
-        const form = document.getElementById('agriterraForm');
-        // Point the form action to your Formspree ID from config
-        form.action = "https://formspree.io/f/" + (window.AGRI_CONFIG?.FORMSPREE_ID || "");
+    const form = document.getElementById('agriterraForm');
+    
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // 2. Get the Formspree ID from your central config
+        const formID = window.AGRI_CONFIG?.FORMSPREE_ID;
+        
+        if (!formID || formID === 'PASTE_ONLY_THE_CODE_HERE') {
+            alert("Error: Formspree ID not found in config.js. Please check your configuration.");
+            return;
+        }
 
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const btn = document.getElementById('submitBtn');
-            btn.innerText = 'Sending...';
-            btn.disabled = true;
+        const btn = document.getElementById('submitBtn');
+        btn.innerText = 'Sending...';
+        btn.disabled = true;
 
-            const response = await fetch(form.action, {
+        // 3. Construct the Formspree URL dynamically
+        const formAction = "https://formspree.io/f/" + formID;
+
+        try {
+            const response = await fetch(formAction, {
                 method: 'POST',
                 body: new FormData(form),
                 headers: { 'Accept': 'application/json' }
             });
 
             if (response.ok) {
-                if(window.gtag) gtag('event', 'lead_form_submitted');
+                if(window.gtag) {
+                    gtag('event', 'lead_form_submitted', {
+                        'event_category': 'Leads',
+                        'event_label': document.getElementById('topic').value
+                    });
+                }
                 window.location.href = "thank-you.html";
             } else {
-                alert("Submission failed. Please try again.");
+                const errorData = await response.json();
+                console.error("Formspree Error:", errorData);
+                alert("Submission failed: " + (errorData.error || "Check your Formspree activation email."));
                 btn.disabled = false;
                 btn.innerText = 'Submit Request';
             }
-        });
-    </script>
+        } catch (err) {
+            console.error("Connection Error:", err);
+            alert("Network error. Please check your internet connection.");
+            btn.disabled = false;
+            btn.innerText = 'Submit Request';
+        }
+    });
+</script>
 </body>
 </html>
