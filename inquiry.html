@@ -1,54 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="config.js"></script>
-
-<script>
-    (function() {
-        const gaId = window.AGRI_CONFIG?.GA_MEASUREMENT_ID;
-        const clarityId = window.AGRI_CONFIG?.CLARITY_ID;
-        if (gaId) {
-            const s = document.createElement('script');
-            s.async = true;
-            s.src = "https://www.googletagmanager.com/gtag/js?id=" + gaId;
-            document.head.appendChild(s);
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', gaId);
-            window.gtag = gtag;
-        }
-        if (clarityId) {
-            (function(c,l,a,r,i,t,y){
-                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-            })(window, document, "clarity", "script", clarityId);
-        }
-    })();
-</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Request AgriTerra Report</title>
+    
+    <script src="config.js"></script>
+
+    <script>
+        (function() {
+            const gaId = window.AGRI_CONFIG?.GA_MEASUREMENT_ID;
+            const clarityId = window.AGRI_CONFIG?.CLARITY_ID;
+            if (gaId) {
+                const s = document.createElement('script'); s.async = true;
+                s.src = "https://www.googletagmanager.com/gtag/js?id=" + gaId;
+                document.head.appendChild(s);
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date()); gtag('config', gaId);
+                window.gtag = gtag;
+            }
+            if (clarityId) {
+                (function(c,l,a,r,i,t,y){
+                    c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                    t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                    y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+                })(window, document, "clarity", "script", clarityId);
+            }
+        })();
+    </script>
+
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; color: #333; display: flex; justify-content: center; padding: 40px 20px; }
         .form-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 500px; }
-        
         .header { text-align: center; margin-bottom: 30px; }
         .brand { color: #27ae60; font-weight: bold; font-size: 2rem; margin: 0; }
-        .subtitle { color: #7f8c8d; font-size: 1rem; margin: 5px 0 0 0; }
-
         .form-group { margin-bottom: 20px; }
         label { display: block; font-weight: bold; margin-bottom: 5px; color: #2c3e50; font-size: 0.9rem; }
-        input[type="text"], input[type="email"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 1rem; box-sizing: border-box; }
-        
-        input[readonly] { background-color: #ecf0f1; color: #7f8c8d; border: 1px solid #bdc3c7; cursor: not-allowed; }
-
-        .btn { background: #27ae60; color: white; border: none; padding: 15px; border-radius: 5px; font-weight: bold; width: 100%; font-size: 1.1rem; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
-        .btn:hover { background: #219150; }
-        .btn:disabled { background: #95a5a6; cursor: wait; }
-        
-        .disclaimer { font-size: 0.8rem; color: #7f8c8d; text-align: center; margin-top: 15px; }
+        input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 1rem; box-sizing: border-box; }
+        input[readonly] { background-color: #ecf0f1; color: #7f8c8d; cursor: not-allowed; }
+        .btn { background: #27ae60; color: white; border: none; padding: 15px; border-radius: 5px; font-weight: bold; width: 100%; font-size: 1.1rem; cursor: pointer; transition: background 0.2s; }
+        .btn:disabled { background: #95a5a6; }
     </style>
 </head>
 <body>
@@ -56,111 +48,65 @@
     <div class="form-container">
         <div class="header">
             <h1 class="brand">AgriTerra</h1>
-            <p class="subtitle">Official Farm Bureau Deep-Dive Request</p>
+            <p style="color:#7f8c8d;">Official Report Request</p>
         </div>
 
-        <form id="agriterraForm" action="https://formspree.io/f/xdalljoz" method="POST">
-            
-            <input type="hidden" name="_next" value="https://scout.agriterra.io/thank-you.html">
-
+        <form id="agriterraForm" method="POST">
             <div class="form-group">
-                <label for="fullName">Full Name</label>
-                <input type="text" id="fullName" name="Name" placeholder="Jane Doe" required>
+                <label>Full Name</label>
+                <input type="text" name="Name" required placeholder="Jane Doe">
             </div>
-
             <div class="form-group">
-                <label for="emailAddress">Email Address</label>
-                <input type="email" id="emailAddress" name="Email" placeholder="jane@example.com" required>
+                <label>Email Address</label>
+                <input type="email" name="Email" required placeholder="jane@farm.com">
             </div>
-
             <div class="form-group">
-                <label for="fbNumber">Farm Bureau Member ID (Optional)</label>
-                <input type="text" id="fbNumber" name="Member_ID" placeholder="123456789">
-            </div>
-
-            <hr style="border: 0; border-top: 1px dashed #ccc; margin: 25px 0;">
-
-            <div class="form-group">
-                <label for="topic">Requested Report Topic</label>
+                <label>Report Focus</label>
                 <input type="text" id="topic" name="Topic" readonly>
             </div>
-
             <div class="form-group">
-                <label for="acres">Parcel Size (Acres)</label>
+                <label>Acres</label>
                 <input type="text" id="acres" name="Acres" readonly>
             </div>
-
             <div class="form-group">
-                <label for="coords">GPS Coordinates</label>
+                <label>Coordinates</label>
                 <input type="text" id="coords" name="Coordinates" readonly>
             </div>
-
             <button type="submit" id="submitBtn" class="btn">Submit Request</button>
-            <p class="disclaimer">A representative will contact you within 1-2 business days with your customized land report.</p>
         </form>
     </div>
 
     <script>
-        // 1. Pre-fill the form using the URL data
         const params = new URLSearchParams(window.location.search);
-        
-        const rawTopic = params.get('topic') || "General Inquiry";
-        const acres = params.get('acres') || "Unknown";
-        const lat = params.get('lat') || "Unknown";
-        const lng = params.get('lng') || "Unknown";
+        document.getElementById('topic').value = params.get('topic') || "General Inquiry";
+        document.getElementById('acres').value = params.get('acres') || "Unknown";
+        document.getElementById('coords').value = `${params.get('lat')}, ${params.get('lng')}`;
 
-        const displayTitles = {
-            'property': 'Property Information',
-            'physical': 'Physical Characteristics',
-            'regulatory': 'Regulatory Context',
-            'infrastructure': 'Infrastructure Proximity',
-            'ag_value': 'Agricultural Value',
-            'market': 'Market Context',
-            'risks': 'Risks & Trade-Offs',
-            'insights': 'Plain-Language Insights'
-        };
-        
-        document.getElementById('topic').value = displayTitles[rawTopic] || rawTopic;
-        document.getElementById('acres').value = acres;
-        document.getElementById('coords').value = `${lat}, ${lng}`;
-
-        // 2. The "Pro" Seamless Form Submission
         const form = document.getElementById('agriterraForm');
-        
+        // Point the form action to your Formspree ID from config
+        form.action = "https://formspree.io/f/" + (window.AGRI_CONFIG?.FORMSPREE_ID || "");
+
         form.addEventListener('submit', async function(e) {
-            e.preventDefault(); // Stops the browser from leaving the page immediately
-            
+            e.preventDefault();
             const btn = document.getElementById('submitBtn');
-            const data = new FormData(form);
-            
-            // Visual feedback
-            btn.innerText = 'Sending Request...';
+            btn.innerText = 'Sending...';
             btn.disabled = true;
-            
-            try {
-                // Send the data to Formspree silently in the background
-                const response = await fetch(form.action, {
-                    method: form.method,
-                    body: data,
-                    headers: { 'Accept': 'application/json' }
-                });
-                
-                if (response.ok) {
-                    // Success! Force the redirect instantly using JS
-                    // IMPORTANT: Make sure this URL matches your actual live domain!
-                    window.location.href = "https://scout.agriterra.io/thank-you.html";
-                } else {
-                    alert("Oops! There was a problem submitting your request. Please try again.");
-                    btn.innerText = 'Submit Request';
-                    btn.disabled = false;
-                }
-            } catch (error) {
-                alert("Network error. Please check your connection and try again.");
-                btn.innerText = 'Submit Request';
+
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (response.ok) {
+                if(window.gtag) gtag('event', 'lead_form_submitted');
+                window.location.href = "thank-you.html";
+            } else {
+                alert("Submission failed. Please try again.");
                 btn.disabled = false;
+                btn.innerText = 'Submit Request';
             }
         });
     </script>
-
 </body>
 </html>
