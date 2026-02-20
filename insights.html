@@ -64,50 +64,101 @@
         // 1. Get today's date
         document.getElementById('currentDate').innerText = new Date().toLocaleDateString();
 
-        // 2. Extract data from the URL (The Magic Part)
+        // 2. Extract data from the URL
         const params = new URLSearchParams(window.location.search);
         const acres = params.get('acres') || "Unknown";
         const lat = parseFloat(params.get('lat'));
         const lng = parseFloat(params.get('lng'));
-        const topic = params.get('topic') || "General Land";
+        const topic = params.get('topic') || "insights"; // Default to insights if missing
 
-        // 3. Populate the top meta boxes
+        // 3. Format topic for display
+        const displayTitles = {
+            'property': 'Property Information',
+            'physical': 'Physical Characteristics',
+            'regulatory': 'Regulatory Context',
+            'infrastructure': 'Infrastructure Proximity',
+            'ag_value': 'Agricultural Value',
+            'market': 'Market Context',
+            'risks': 'Risks & Trade-Offs',
+            'insights': 'Plain-Language Insights'
+        };
+        const niceTitle = displayTitles[topic] || 'Land Report';
+
+        // 4. Populate the top meta boxes
         document.getElementById('displayAcres').innerText = `${acres} Acres`;
-        document.getElementById('displayTopic').innerText = topic.replace('_', ' ');
+        document.getElementById('displayTopic').innerText = niceTitle;
         if (!isNaN(lat) && !isNaN(lng)) {
-            document.getElementById('displayCoords').innerText = `${lat}, ${lng}`;
+            document.getElementById('displayCoords').innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
         }
 
-        // 4. Generate the "Plain Language" Narrative based on the data
+        // 5. Generate Custom Content based on the EXACT button clicked
         const contentDiv = document.getElementById('dynamicContent');
         
         if (isNaN(lat) || isNaN(lng)) {
             contentDiv.innerHTML = `<p style="color:red;">Error: Missing location data. Please return to the map and draw a parcel.</p>`;
         } else {
-            // Write a dynamic, smart-sounding assessment using the URL data
+            // Determine Region
             let region = "Central Ohio";
             if (lat > 40.5 && lng < -83.0) region = "Northwest Ohio (Till Plains)";
             if (lat < 39.8 && lng > -82.5) region = "Southeast Ohio (Appalachian Foothills)";
 
-            let narrative = `
-                <div class="insight-section">
-                    <h2>The Bottom Line for this ${acres}-Acre Parcel</h2>
-                    <p>Located in the <strong>${region}</strong> region, this ${acres}-acre property presents a unique blend of agricultural baseline value and potential alternative use cases.</p>
-                </div>
-                
-                <div class="insight-section">
-                    <h2>What the Data is Telling Us</h2>
-                    <p>At a footprint of roughly <strong>${acres} acres</strong>, this parcel sits in a transitional size bracket. It is large enough to support meaningful cash crop rotation or specific conservation easements, but its true highest-and-best-use will depend heavily on local zoning ordinances and proximity to high-voltage transmission lines (for solar viability).</p>
-                    <p>Because you requested insights specifically regarding <strong>${topic.replace('_', ' ')}</strong>, our preliminary scan indicates that regional averages for this specific latitude (${lat}) often prioritize preserving prime soil profiles, while carefully navigating watershed compliance.</p>
-                </div>
+            let narrative = '';
 
-                <div class="insight-section">
-                    <h2>Immediate Next Steps</h2>
-                    <p>Before making any major infrastructural or leasing decisions on these ${acres} acres, we highly recommend verifying the exact Current Agricultural Use Value (CAUV) soil types mapped to these specific coordinates (${lat}, ${lng}). You should also cross-reference county-level setback requirements if you are considering renewable energy development.</p>
-                </div>
-            `;
-            
-            contentDiv.innerHTML = narrative;
+            // This SWITCH statement picks the right paragraphs based on the button clicked!
+            switch(topic) {
+                case 'property':
+                    narrative = `
+                        <h2>Property Boundaries & Jurisdiction</h2>
+                        <p>This <strong>${acres}-acre</strong> parcel is situated in the ${region} area. At this size, the property is large enough to be registered independently for county tax purposes. An official AgriTerra property scan will pull the exact parcel ID (APN), current ownership records, and historical deed transfers.</p>
+                    `;
+                    break;
+                case 'physical':
+                    narrative = `
+                        <h2>Topography & Soil Health</h2>
+                        <p>Physical characteristics dictate the highest and best use of this land. Located at coordinates ${lat.toFixed(3)}, ${lng.toFixed(3)}, the next step is to evaluate the slope percentage and drainage class. An official AgriTerra physical scan integrates USDA soil composition data to determine if this land is dominated by prime farmland soils or highly erodible land (HEL).</p>
+                    `;
+                    break;
+                case 'regulatory':
+                    narrative = `
+                        <h2>Zoning & Setback Requirements</h2>
+                        <p>Navigating the regulatory landscape in ${region} is crucial. For a <strong>${acres}-acre</strong> parcel, county zoning ordinances will dictate allowable structures, minimum road frontages, and renewable energy setbacks. An official report will detail local solar/wind moratoriums, CAUV eligibility, and EPA wetland compliance.</p>
+                    `;
+                    break;
+                case 'infrastructure':
+                    narrative = `
+                        <h2>Grid Access & Roadways</h2>
+                        <p>Alternative uses for this ${acres}-acre site—like solar leases—require specific infrastructure. Is this parcel within 2 miles of a 69kV transmission line? Is it accessible via a county-maintained paved road capable of handling heavy equipment? Our full report maps the distance to the nearest substations and public utilities.</p>
+                    `;
+                    break;
+                case 'ag_value':
+                    narrative = `
+                        <h2>Cash Rent & Yield Potential</h2>
+                        <p>For agricultural valuation, size and region matter. This ${acres}-acre footprint in ${region} has a specific baseline value based on county-wide average cash rent and historical corn/soybean yields. The official AgriTerra valuation evaluates soil productivity indexes (NCCPI) to estimate fair-market lease rates.</p>
+                    `;
+                    break;
+                case 'market':
+                    narrative = `
+                        <h2>Local Land Comps & Development Pressure</h2>
+                        <p>What is land actually selling for right now near ${lat.toFixed(3)}, ${lng.toFixed(3)}? Market context goes beyond CAUV. Our deep-dive report analyzes recent comparable sales of similarly sized (${acres} acre) agricultural parcels in the county and assesses the 5-year urban development pressure encroaching on this area.</p>
+                    `;
+                    break;
+                case 'risks':
+                    narrative = `
+                        <h2>Evaluating Trade-Offs</h2>
+                        <p>Every land-use change carries risk. If you transition this ${acres}-acre parcel out of active production, what are the CAUV recoupment penalties? Are there FEMA flood zones overlapping these coordinates? The official AgriTerra risk report identifies these hidden liabilities before you sign a lease.</p>
+                    `;
+                    break;
+                case 'insights':
+                default:
+                    narrative = `
+                        <h2>The Bottom Line</h2>
+                        <p>Located in the <strong>${region}</strong> region, this ${acres}-acre property presents a unique blend of agricultural baseline value and potential alternative use cases. It is large enough to support meaningful cash crop rotation or specific conservation easements, but its true highest-and-best-use will depend on deep-dive analysis into local zoning and soil composition.</p>
+                    `;
+                    break;
+            }
+
+            // Add the generated narrative to the page
+            contentDiv.innerHTML = `<div class="insight-section">${narrative}</div>`;
         }
     </script>
 </body>
