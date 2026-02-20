@@ -58,7 +58,7 @@
             <h3>Want the Official Farm Bureau Report?</h3>
             <p>This is just a surface-level scan. Get the complete, deep-dive evaluation of this exact parcel sent straight to your inbox.</p>
             <button class="btn" onclick="window.print();">Print This Teaser</button>
-            <a href="mailto:contact@agriterra.io" class="btn">Request Full Report</a>
+            <a href="#" id="requestReportBtn" class="btn">Request Full Report</a>
         </div>
     </div>
 
@@ -185,6 +185,11 @@
 
         // Trigger the async function when the page loads
         buildReport();
+        // Pass the exact same URL parameters to the inquiry form when clicked
+document.getElementById('requestReportBtn').addEventListener('click', function(e) {
+    e.preventDefault();
+    window.location.href = 'inquiry.html' + window.location.search;
+});
     </script>
 </body>
 </html>
