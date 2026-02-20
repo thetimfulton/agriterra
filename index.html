@@ -81,4 +81,146 @@
 
         // --- NEW: Add Ohio County Lines ---
         // Fetch a public US counties dataset and filter for Ohio (FIPS code starting with '39')
-        fetch('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-f
+        fetch('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json')
+            .then(response => response.json())
+            .then(data => {
+                const ohioCounties = {
+                    type: "FeatureCollection",
+                    features: data.features.filter(f => f.id && f.id.startsWith("39"))
+                };
+
+                L.geoJSON(ohioCounties, {
+                    style: {
+                        color: "#34495e", // Dark gray
+                        weight: 1.5,      // Thin lines
+                        opacity: 0.6,     // Semi-transparent
+                        dashArray: '4, 4',// Dashed lines to differentiate from drawn shapes
+                        fillOpacity: 0    // Transparent inside so you can still see the map
+                    },
+                    interactive: false    // Prevents lines from blocking drawing clicks
+                }).addTo(map);
+            })
+            .catch(err => console.error("Error loading county lines:", err));
+        // -----------------------------------
+
+        // 2. Add Drawing Controls
+        var drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        var drawControl = new L.Control.Draw({
+            draw: {
+                polygon: true,
+                marker: false,
+                circle: false,
+                circlemarker: false,
+                polyline: false,
+                rectangle: true
+            },
+            edit: {
+                featureGroup: drawnItems,
+                remove: true
+            }
+        });
+        map.addControl(drawControl);
+
+        // 3. Handle Draw Events
+        let currentLayer = null;
+
+        map.on(L.Draw.Event.CREATED, function (e) {
+            drawnItems.clearLayers();
+            currentLayer = e.layer;
+            drawnItems.addLayer(currentLayer);
+            document.getElementById('analyzeBtn').disabled = false;
+            map.fitBounds(currentLayer.getBounds());
+        });
+
+        map.on(L.Draw.Event.DELETED, function () {
+            document.getElementById('analyzeBtn').disabled = true;
+            document.getElementById('results').innerHTML = '';
+            currentLayer = null;
+        });
+
+        // 4. Analysis Logic
+        document.getElementById('analyzeBtn').addEventListener('click', async () => {
+            if (!currentLayer) return;
+
+            const loading = document.getElementById('loading');
+            const resultsDiv = document.getElementById('results');
+            
+            loading.style.display = 'block';
+            resultsDiv.innerHTML = '';
+            
+            const center = currentLayer.getBounds().getCenter();
+            
+            // Security check: Make absolutely sure the drawn center is in Ohio
+            if (center.lat < 38.4 || center.lat > 42.0 || center.lng < -84.8 || center.lng > -80.5) {
+                loading.style.display = 'none';
+                resultsDiv.innerHTML = `<div style="color:red; margin-top:10px;">Error: Parcel must be located within Ohio.</div>`;
+                return;
+            }
+
+            const geoJson = currentLayer.toGeoJSON();
+            const areaSqMeters = turf.area(geoJson);
+            const acres = (areaSqMeters * 0.000247105).toFixed(1);
+
+            try {
+                // --- API CALL: NREL Solar Data ---
+                const solarUrl = `https://developer.nrel.gov/api/pvwatts/v8.json?api_key=DEMO_KEY&lat=${center.lat}&lon=${center.lng}&system_capacity=4&azimuth=180&tilt=20&array_type=1&module_type=0&losses=14`;
+                
+                const solarResponse = await fetch(solarUrl);
+                const solarData = await solarResponse.json();
+                
+                const solarOutput = solarData.outputs ? Math.round(solarData.outputs.ac_annual) : "N/A";
+                const solarValue = solarOutput !== "N/A" ? `$${Math.round(solarOutput * 0.14)}` : "N/A"; 
+
+                // --- OHIO MOCK CALL: Wind Potential ---
+                let windScore = "Moderate";
+                if (center.lat > 41.2) windScore = "High (Lake Erie proximity)";
+                else if (center.lat < 39.5) windScore = "Low (Southern Topography)";
+
+                // --- RENDER RESULTS ---
+                const html = `
+                    <div class="report-card">
+                        <div class="metric-title">Selected Ohio Parcel</div>
+                        <div class="metric-value">${acres} <span class="metric-unit">Acres</span></div>
+                        <div style="font-size:0.8rem; color:#888;">Lat: ${center.lat.toFixed(3)}, Lng: ${center.lng.toFixed(3)}</div>
+                    </div>
+
+                    <div class="report-card card-solar">
+                        <div class="metric-title">Solar Potential</div>
+                        <div class="metric-value">${solarOutput.toLocaleString()} <span class="metric-unit">kWh/yr</span></div>
+                        <p style="font-size: 0.9rem; margin: 5px 0 0 0;">
+                            Est. Energy Value: <strong>${solarValue}/yr</strong><br>
+                            <small>Based on a standard 4kW test array.</small>
+                        </p>
+                    </div>
+
+                    <div class="report-card card-wind">
+                        <div class="metric-title">Wind Suitability</div>
+                        <div class="metric-value">${windScore}</div>
+                        <p style="font-size: 0.9rem; margin: 5px 0 0 0;">
+                            <small>Based on Ohio regional wind data estimates.</small>
+                        </p>
+                    </div>
+
+                    <div class="report-card card-conservation">
+                        <div class="metric-title">CAUV & Conservation</div>
+                        <div class="metric-value">Pending</div>
+                        <p style="font-size: 0.9rem; margin: 5px 0 0 0;">
+                            Data connection to Ohio Department of Taxation CAUV values required for this module.
+                        </p>
+                    </div>
+                `;
+                
+                resultsDiv.innerHTML = html;
+
+            } catch (error) {
+                console.error(error);
+                resultsDiv.innerHTML = `<div style="color:red; margin-top:10px;">Error fetching data. Please try again.</div>`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
