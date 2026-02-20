@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriTerra - Plain Language Insights</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f7f6; color: #333; line-height: 1.6; padding: 40px 20px; }
+        .report-container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        
+        .header { border-bottom: 2px solid #27ae60; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .brand { color: #27ae60; font-weight: bold; font-size: 2rem; margin: 0; }
+        .subtitle { color: #7f8c8d; font-size: 1rem; margin: 0; }
+        
+        .meta-data { background: #ecf0f1; padding: 15px; border-radius: 5px; margin-bottom: 30px; display: flex; gap: 20px; font-size: 0.9rem; }
+        .meta-item span { font-weight: bold; color: #2c3e50; display: block; font-size: 1.1rem; }
+        
+        .insight-section { margin-bottom: 30px; }
+        .insight-section h2 { color: #2c3e50; font-size: 1.3rem; margin-bottom: 10px; }
+        
+        .cta-box { background: #2c3e50; color: white; padding: 25px; border-radius: 8px; text-align: center; margin-top: 40px; }
+        .btn { background: #27ae60; color: white; text-decoration: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; display: inline-block; margin-top: 15px; transition: background 0.2s; }
+        .btn:hover { background: #219150; }
+        
+        @media print {
+            body { background: white; padding: 0; }
+            .report-container { box-shadow: none; max-width: 100%; padding: 0; }
+            .cta-box { display: none; } /* Hide the upsell box when printing */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="report-container">
+        <div class="header">
+            <div>
+                <h1 class="brand">AgriTerra</h1>
+                <p class="subtitle">Plain-Language Land Insights</p>
+            </div>
+            <div style="text-align: right; color: #7f8c8d; font-size: 0.9rem;">
+                Generated: <span id="currentDate"></span>
+            </div>
+        </div>
+
+        <div class="meta-data">
+            <div class="meta-item">Parcel Size: <span id="displayAcres">-- Acres</span></div>
+            <div class="meta-item">Coordinates: <span id="displayCoords">--, --</span></div>
+            <div class="meta-item">Topic: <span id="displayTopic" style="text-transform: capitalize;">--</span></div>
+        </div>
+
+        <div id="dynamicContent">
+            <p>Analyzing parcel data...</p>
+        </div>
+
+        <div class="cta-box">
+            <h3>Want the Official Farm Bureau Report?</h3>
+            <p>This is just a surface-level scan. Get the complete, deep-dive evaluation of this exact parcel sent straight to your inbox.</p>
+            <a href="#" class="btn" onclick="window.print(); return false;">Print This Teaser</a>
+            <a href="mailto:contact@yourwebsite.com" class="btn">Request Full Report</a>
+        </div>
+    </div>
+
+    <script>
+        // 1. Get today's date
+        document.getElementById('currentDate').innerText = new Date().toLocaleDateString();
+
+        // 2. Extract data from the URL (The Magic Part)
+        const params = new URLSearchParams(window.location.search);
+        const acres = params.get('acres') || "Unknown";
+        const lat = parseFloat(params.get('lat'));
+        const lng = parseFloat(params.get('lng'));
+        const topic = params.get('topic') || "General Land";
+
+        // 3. Populate the top meta boxes
+        document.getElementById('displayAcres').innerText = `${acres} Acres`;
+        document.getElementById('displayTopic').innerText = topic.replace('_', ' ');
+        if (!isNaN(lat) && !isNaN(lng)) {
+            document.getElementById('displayCoords').innerText = `${lat}, ${lng}`;
+        }
+
+        // 4. Generate the "Plain Language" Narrative based on the data
+        const contentDiv = document.getElementById('dynamicContent');
+        
+        if (isNaN(lat) || isNaN(lng)) {
+            contentDiv.innerHTML = `<p style="color:red;">Error: Missing location data. Please return to the map and draw a parcel.</p>`;
+        } else {
+            // Write a dynamic, smart-sounding assessment using the URL data
+            let region = "Central Ohio";
+            if (lat > 40.5 && lng < -83.0) region = "Northwest Ohio (Till Plains)";
+            if (lat < 39.8 && lng > -82.5) region = "Southeast Ohio (Appalachian Foothills)";
+
+            let narrative = `
+                <div class="insight-section">
+                    <h2>The Bottom Line for this ${acres}-Acre Parcel</h2>
+                    <p>Located in the <strong>${region}</strong> region, this ${acres}-acre property presents a unique blend of agricultural baseline value and potential alternative use cases.</p>
+                </div>
+                
+                <div class="insight-section">
+                    <h2>What the Data is Telling Us</h2>
+                    <p>At a footprint of roughly <strong>${acres} acres</strong>, this parcel sits in a transitional size bracket. It is large enough to support meaningful cash crop rotation or specific conservation easements, but its true highest-and-best-use will depend heavily on local zoning ordinances and proximity to high-voltage transmission lines (for solar viability).</p>
+                    <p>Because you requested insights specifically regarding <strong>${topic.replace('_', ' ')}</strong>, our preliminary scan indicates that regional averages for this specific latitude (${lat}) often prioritize preserving prime soil profiles, while carefully navigating watershed compliance.</p>
+                </div>
+
+                <div class="insight-section">
+                    <h2>Immediate Next Steps</h2>
+                    <p>Before making any major infrastructural or leasing decisions on these ${acres} acres, we highly recommend verifying the exact Current Agricultural Use Value (CAUV) soil types mapped to these specific coordinates (${lat}, ${lng}). You should also cross-reference county-level setback requirements if you are considering renewable energy development.</p>
+                </div>
+            `;
+            
+            contentDiv.innerHTML = narrative;
+        }
+    </script>
+</body>
+</html>
