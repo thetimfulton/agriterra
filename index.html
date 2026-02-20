@@ -11,19 +11,15 @@
         (function() {
             const gaId = window.AGRI_CONFIG?.GA_MEASUREMENT_ID;
             const clarityId = window.AGRI_CONFIG?.CLARITY_ID;
-            
             if (gaId) {
-                const s = document.createElement('script');
-                s.async = true;
+                const s = document.createElement('script'); s.async = true;
                 s.src = "https://www.googletagmanager.com/gtag/js?id=" + gaId;
                 document.head.appendChild(s);
                 window.dataLayer = window.dataLayer || [];
                 function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', gaId);
-                window.gtag = gtag; // Make global
+                gtag('js', new Date()); gtag('config', gaId);
+                window.gtag = gtag;
             }
-            
             if (clarityId) {
                 (function(c,l,a,r,i,t,y){
                     c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
@@ -50,15 +46,20 @@
         .search-container button { background: var(--dark-slate); color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .btn-main { background: var(--brand-green); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-size: 1.1rem; font-weight: bold; }
         .btn-main:disabled { background: #cbd5e0; }
+        
+        /* Insight Cards */
         .report-card { background: white; border-radius: 10px; padding: 15px; margin-top: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 5px solid #ddd; }
         .card-solar { border-left-color: #f1c40f; }
         .card-wind { border-left-color: #3498db; }
         .card-conservation { border-left-color: var(--brand-green); }
-        .metric-title { font-weight: bold; font-size: 0.8rem; text-transform: uppercase; color: #7f8c8d; }
-        .metric-value { font-size: 1.5rem; font-weight: bold; color: var(--dark-slate); }
+        .metric-title { font-weight: bold; font-size: 0.75rem; text-transform: uppercase; color: #7f8c8d; margin-bottom: 5px; }
+        .metric-value { font-size: 1.4rem; font-weight: bold; color: var(--dark-slate); }
+        .metric-note { font-size: 0.85rem; color: #666; margin-top: 5px; line-height: 1.3; }
+
         .premium-header { margin-top: 30px; padding-top: 20px; border-top: 2px dashed #cbd5e0; font-weight: bold; color: var(--dark-slate); }
         .premium-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; margin-bottom: 30px; }
-        .premium-box { background: white; border: 1px solid #e2e8f0; padding: 12px 8px; border-radius: 8px; text-align: center; font-size: 0.8rem; color: var(--dark-slate); text-decoration: none; font-weight: bold; }
+        .premium-box { background: white; border: 1px solid #e2e8f0; padding: 12px 8px; border-radius: 8px; text-align: center; font-size: 0.75rem; color: var(--dark-slate); text-decoration: none; font-weight: bold; transition: background 0.2s; }
+        .premium-box:hover { background: var(--dark-slate); color: white; }
         .loading { text-align: center; padding: 20px; display: none; font-style: italic; }
     </style>
 </head>
@@ -71,7 +72,7 @@
             <button id="searchBtn">Find</button>
         </div>
         <button id="analyzeBtn" class="btn-main" disabled>Generate Report</button>
-        <div id="loading" class="loading">Querying Ohio Datasets...</div>
+        <div id="loading" class="loading">Analyzing Ohio datasets...</div>
         <div id="results"></div>
     </div>
 
@@ -99,10 +100,7 @@
 
         var drawnItems = new L.FeatureGroup();
         map.addLayer(drawnItems);
-        var drawControl = new L.Control.Draw({ 
-            draw: { polygon: true, rectangle: true, marker: false, circle: false, circlemarker: false, polyline: false }, 
-            edit: { featureGroup: drawnItems, remove: true }
-        });
+        var drawControl = new L.Control.Draw({ draw: { polygon: true, rectangle: true, marker: false, circle: false, circlemarker: false, polyline: false }, edit: { featureGroup: drawnItems, remove: true } });
         map.addControl(drawControl);
 
         let currentLayer = null;
@@ -115,47 +113,61 @@
 
         document.getElementById('analyzeBtn').addEventListener('click', async () => {
             if (!currentLayer) return;
-            const resultsDiv = document.getElementById('results');
+            const resDiv = document.getElementById('results');
             const loading = document.getElementById('loading');
             loading.style.display = 'block';
-            resultsDiv.innerHTML = '';
+            resDiv.innerHTML = '';
             
             const center = currentLayer.getBounds().getCenter();
             const acres = (turf.area(currentLayer.toGeoJSON()) * 0.000247105).toFixed(1);
             const apiKey = window.AGRI_CONFIG?.NREL_API_KEY || 'DEMO_KEY';
 
             try {
+                // 1. Solar Data
                 const solarRes = await fetch(`https://developer.nrel.gov/api/pvwatts/v8.json?api_key=${apiKey}&lat=${center.lat}&lon=${center.lng}&system_capacity=4&azimuth=180&tilt=20&array_type=1&module_type=0&losses=14`);
                 const solarData = await solarRes.json();
                 const solarOutput = solarData.outputs ? Math.round(solarData.outputs.ac_annual) : "N/A";
 
-                let windScore = (center.lat > 41.2) ? "High" : (center.lat < 39.5) ? "Low" : "Moderate";
-                let cauvEst = (center.lng < -83.0) ? Math.round(acres * 1100) : Math.round(acres * 750);
+                // 2. Wind & Conservation Logic
+                let windScore = (center.lat > 41.2) ? "High (Lake Erie proximity)" : (center.lat < 39.5) ? "Low (Southern Topography)" : "Moderate";
+                let cauvEst = (center.lng < -83.0 && center.lat > 39.5) ? Math.round(acres * 1200) : (center.lng > -83.0 && center.lat < 40.0) ? Math.round(acres * 350) : Math.round(acres * 800);
+                let conservationNotes = (cauvEst > 1000) ? "High prime farmland overlap." : "Moderate prime farmland potential.";
 
-                resultsDiv.innerHTML = `
+                resDiv.innerHTML = `
                     <div class="report-card">
                         <div class="metric-title">Measured Parcel</div>
                         <div class="metric-value">${acres} Acres</div>
                     </div>
+                    
                     <div class="report-card card-solar">
-                        <div class="metric-title">Solar Output</div>
+                        <div class="metric-title">Solar Potential</div>
                         <div class="metric-value">${solarOutput.toLocaleString()} <small>kWh/yr</small></div>
                     </div>
+
                     <div class="report-card card-wind">
                         <div class="metric-title">Wind Suitability</div>
                         <div class="metric-value">${windScore}</div>
                     </div>
+
+                    <div class="report-card card-conservation">
+                        <div class="metric-title">Est. CAUV & Conservation</div>
+                        <div class="metric-value">$${cauvEst.toLocaleString()}</div>
+                        <div class="metric-note"><strong>Notes:</strong> ${conservationNotes}</div>
+                    </div>
+
                     <div class="premium-header">Unlock Deep Analysis</div>
                     <div class="premium-grid">
-                        ${['property','physical','regulatory','infrastructure','ag_value','market','risks','insights'].map(t => `
-                            <a href="insights.html?topic=${t}&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" 
-                               target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': '${t}'});">
-                               ${t.replace('_',' ').toUpperCase()}
-                            </a>
-                        `).join('')}
+                        <a href="insights.html?topic=property&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'property'});">Property Info</a>
+                        <a href="insights.html?topic=physical&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'physical'});">Soil Stats</a>
+                        <a href="insights.html?topic=regulatory&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'regulatory'});">Regulatory</a>
+                        <a href="insights.html?topic=infrastructure&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'infrastructure'});">Infrastructure</a>
+                        <a href="insights.html?topic=ag_value&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'ag_value'});">Ag Value</a>
+                        <a href="insights.html?topic=market&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'market'});">Market Context</a>
+                        <a href="insights.html?topic=risks&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'risks'});">Risks & Trades</a>
+                        <a href="insights.html?topic=insights&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'insights'});">Plain Insights</a>
                     </div>
                 `;
-            } catch (err) { resultsDiv.innerHTML = "Error loading datasets."; }
+            } catch (err) { resDiv.innerHTML = "Error loading datasets."; }
             finally { loading.style.display = 'none'; }
         });
     </script>
