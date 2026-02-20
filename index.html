@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AgriTerra Land Scout</title>
+    <title>AgriTerra Land Scout - Ohio Edition</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
@@ -15,9 +15,10 @@
         
         h1 { color: #2c3e50; font-size: 1.5rem; margin-top: 0; }
         .brand { color: #27ae60; font-weight: bold; }
+        .badge { background: #e74c3c; color: white; font-size: 0.7rem; padding: 3px 6px; border-radius: 4px; vertical-align: middle; }
         
         .instruction { font-size: 0.9rem; color: #666; margin-bottom: 20px; }
-        .btn { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 1rem; }
+        .btn { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 1rem; transition: background 0.2s; }
         .btn:disabled { background: #ccc; cursor: not-allowed; }
         .btn:hover:not(:disabled) { background: #219150; }
 
@@ -37,17 +38,17 @@
 <body>
 
     <div id="sidebar">
-        <h1><span class="brand">AgriTerra</span> Scout</h1>
+        <h1><span class="brand">AgriTerra</span> Scout <span class="badge">OHIO</span></h1>
         <p class="instruction">
-            1. Use the toolbar on the left of the map to <strong>draw a shape</strong> around your land.<br>
-            2. Click "Generate Report" to see publicly available energy and land data.
+            1. Use the toolbar on the left to <strong>draw a shape</strong> around an Ohio parcel.<br>
+            2. Click "Generate Report" to evaluate the land.
         </p>
         
         <button id="analyzeBtn" class="btn" disabled>Generate Report</button>
         
         <div id="loading" class="loading">
-            Analyzing parcel data...<br>
-            <small>(Querying NREL & USGS databases)</small>
+            Analyzing Ohio parcel...<br>
+            <small>(Querying NREL databases)</small>
         </div>
 
         <div id="results"></div>
@@ -57,137 +58,27 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script> <script>
-        // 1. Initialize Map (Centered on US)
-        var map = L.map('map').setView([39.8283, -98.5795], 4);
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+    <script>
+        // 1. Initialize Map (Locked to Ohio)
+        var ohioBounds = [
+            [38.401, -84.820], // Southwest Corner
+            [41.977, -80.518]  // Northeast Corner
+        ];
+
+        var map = L.map('map', {
+            center: [40.417, -82.907], // Center of Ohio
+            zoom: 7,                   
+            minZoom: 7,                
+            maxBounds: ohioBounds,     
+            maxBoundsViscosity: 1.0    
+        });
         
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // 2. Add Drawing Controls
-        var drawnItems = new L.FeatureGroup();
-        map.addLayer(drawnItems);
-
-        var drawControl = new L.Control.Draw({
-            draw: {
-                polygon: true,
-                marker: false,
-                circle: false,
-                circlemarker: false,
-                polyline: false,
-                rectangle: true
-            },
-            edit: {
-                featureGroup: drawnItems,
-                remove: true
-            }
-        });
-        map.addControl(drawControl);
-
-        // 3. Handle Draw Events
-        let currentLayer = null;
-
-        map.on(L.Draw.Event.CREATED, function (e) {
-            // Remove previous shape if exists (Single parcel analysis for MVP)
-            drawnItems.clearLayers();
-            
-            currentLayer = e.layer;
-            drawnItems.addLayer(currentLayer);
-            
-            // Enable button
-            document.getElementById('analyzeBtn').disabled = false;
-            
-            // Zoom to shape
-            map.fitBounds(currentLayer.getBounds());
-        });
-
-        map.on(L.Draw.Event.DELETED, function () {
-            document.getElementById('analyzeBtn').disabled = true;
-            document.getElementById('results').innerHTML = '';
-            currentLayer = null;
-        });
-
-        // 4. Analysis Logic
-        document.getElementById('analyzeBtn').addEventListener('click', async () => {
-            if (!currentLayer) return;
-
-            const loading = document.getElementById('loading');
-            const resultsDiv = document.getElementById('results');
-            
-            loading.style.display = 'block';
-            resultsDiv.innerHTML = '';
-            
-            // Calculate Center Point for APIs
-            const center = currentLayer.getBounds().getCenter();
-            
-            // Calculate Area (using Turf.js)
-            const geoJson = currentLayer.toGeoJSON();
-            const areaSqMeters = turf.area(geoJson);
-            const acres = (areaSqMeters * 0.000247105).toFixed(1);
-
-            try {
-                // --- API CALL 1: NREL Solar Data (PVWatts) ---
-                // NOTE: We are using the 'DEMO_KEY'. For production, register at developer.nrel.gov
-                const solarUrl = `https://developer.nrel.gov/api/pvwatts/v8.json?api_key=DEMO_KEY&lat=${center.lat}&lon=${center.lng}&system_capacity=4&azimuth=180&tilt=20&array_type=1&module_type=0&losses=14`;
-                
-                const solarResponse = await fetch(solarUrl);
-                const solarData = await solarResponse.json();
-                
-                // Extract Solar Annual kWh (approximate potential per 4kW system)
-                const solarOutput = solarData.outputs ? Math.round(solarData.outputs.ac_annual) : "N/A";
-                const solarValue = solarOutput !== "N/A" ? `$${Math.round(solarOutput * 0.12)}` : "N/A"; // Assuming $0.12/kWh
-
-                // --- MOCK CALL 2: Wind Potential (Logic Simulation) ---
-                // In production, you would query the NREL Wind Toolkit here.
-                // Logic: Higher latitude + central US = higher wind score.
-                let windScore = "Low";
-                if (center.lat > 35 && center.lng > -105 && center.lng < -90) windScore = "High";
-                else if (center.lat > 30) windScore = "Moderate";
-
-                // --- RENDER RESULTS ---
-                const html = `
-                    <div class="report-card">
-                        <div class="metric-title">Selected Area</div>
-                        <div class="metric-value">${acres} <span class="metric-unit">Acres</span></div>
-                        <div style="font-size:0.8rem; color:#888;">Lat: ${center.lat.toFixed(3)}, Lng: ${center.lng.toFixed(3)}</div>
-                    </div>
-
-                    <div class="report-card card-solar">
-                        <div class="metric-title">Solar Potential (PVWatts API)</div>
-                        <div class="metric-value">${solarOutput.toLocaleString()} <span class="metric-unit">kWh/yr</span></div>
-                        <p style="font-size: 0.9rem; margin: 5px 0 0 0;">
-                            Est. Energy Value: <strong>${solarValue}/yr</strong><br>
-                            <small>Based on a standard 4kW test array.</small>
-                        </p>
-                    </div>
-
-                    <div class="report-card card-wind">
-                        <div class="metric-title">Wind Suitability</div>
-                        <div class="metric-value">${windScore}</div>
-                        <p style="font-size: 0.9rem; margin: 5px 0 0 0;">
-                            <small>Based on regional wind speed averages.</small>
-                        </p>
-                    </div>
-
-                    <div class="report-card card-conservation">
-                        <div class="metric-title">Conservation & Soil</div>
-                        <div class="metric-value">Pending</div>
-                        <p style="font-size: 0.9rem; margin: 5px 0 0 0;">
-                            This parcel intersects with <strong>2</strong> potential USDA wetland easements.
-                        </p>
-                    </div>
-                `;
-                
-                resultsDiv.innerHTML = html;
-
-            } catch (error) {
-                console.error(error);
-                resultsDiv.innerHTML = `<div style="color:red; margin-top:10px;">Error fetching data. Please try again.</div>`;
-            } finally {
-                loading.style.display = 'none';
-            }
-        });
-    </script>
-</body>
-</html>
+        // --- NEW: Add Ohio County Lines ---
+        // Fetch a public US counties dataset and filter for Ohio (FIPS code starting with '39')
+        fetch('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-f
