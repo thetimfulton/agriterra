@@ -157,15 +157,16 @@
 
                     <div class="premium-header">Unlock Deep Analysis</div>
                     <div class="premium-grid">
-                        <a href="insights.html?topic=property&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'property'});">Property Info</a>
-                        <a href="insights.html?topic=physical&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'physical'});">Soil Stats</a>
-                        <a href="insights.html?topic=regulatory&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'regulatory'});">Regulatory</a>
-                        <a href="insights.html?topic=infrastructure&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'infrastructure'});">Infrastructure</a>
-                        <a href="insights.html?topic=ag_value&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'ag_value'});">Ag Value</a>
-                        <a href="insights.html?topic=market&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'market'});">Market Context</a>
-                        <a href="insights.html?topic=risks&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'risks'});">Risks & Trades</a>
-                        <a href="insights.html?topic=insights&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'insights'});">Plain Insights</a>
-                    </div>
+                        <a href="insights.html?topic=property&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'property'});">Property Information</a>
+                        <a href="insights.html?topic=physical&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'physical'});">Physical Characteristics</a>
+    
+    <a href="insights.html?topic=regulatory&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'regulatory'});">Regulatory Context</a>
+    <a href="insights.html?topic=infrastructure&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'infrastructure'});">Infrastructure Proximity</a>
+    <a href="insights.html?topic=ag_value&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'ag_value'});">Agricultural Value</a>
+    <a href="insights.html?topic=market&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'market'});">Market Context</a>
+    <a href="insights.html?topic=risks&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'risks'});">Risks & Trade-Offs</a>
+    <a href="insights.html?topic=insights&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}" target="_blank" class="premium-box" onclick="if(window.gtag) gtag('event', 'premium_click', {'topic': 'insights'});">Plain-Language Insights</a>
+</div>
                 `;
             } catch (err) { resDiv.innerHTML = "Error loading datasets."; }
             finally { loading.style.display = 'none'; }
