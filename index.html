@@ -246,19 +246,23 @@
                 `;
 
                 // --- RENDER PREMIUM UPSELL SECTION ---
+                // We are dynamically appending the acreage and coordinates to the URL parameters
+                const baseFormUrl = "https://thetimfulton.github.io/agriterra/insights.html";
+                const locationData = `&acres=${acres}&lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}`;
+
                 html += `
                     <div class="premium-header">Unlock Deep Analysis</div>
                     <p class="premium-desc">Need more than a quick scan? Request a comprehensive, farmer-ready AgriTerra report for this exact parcel.</p>
                     
                     <div class="premium-grid">
-                        <a href="https://agriterra.io/inquiry?topic=property" target="_blank" class="premium-box">Property Info</a>
-                        <a href="https://agriterra.io/inquiry?topic=physical" target="_blank" class="premium-box">Physical Characteristics</a>
-                        <a href="https://agriterra.io/inquiry?topic=regulatory" target="_blank" class="premium-box">Regulatory Context</a>
-                        <a href="https://agriterra.io/inquiry?topic=infrastructure" target="_blank" class="premium-box">Infrastructure Proximity</a>
-                        <a href="https://agriterra.io/inquiry?topic=ag_value" target="_blank" class="premium-box">Agricultural Value</a>
-                        <a href="https://agriterra.io/inquiry?topic=market" target="_blank" class="premium-box">Market Context</a>
-                        <a href="https://agriterra.io/inquiry?topic=risks" target="_blank" class="premium-box">Risks & Trade-Offs</a>
-                        <a href="https://agriterra.io/inquiry?topic=insights" target="_blank" class="premium-box">Plain-Language Insights</a>
+                        <a href="${baseFormUrl}?topic=property${locationData}" target="_blank" class="premium-box">Property Info</a>
+                        <a href="${baseFormUrl}?topic=physical${locationData}" target="_blank" class="premium-box">Physical Characteristics</a>
+                        <a href="${baseFormUrl}?topic=regulatory${locationData}" target="_blank" class="premium-box">Regulatory Context</a>
+                        <a href="${baseFormUrl}?topic=infrastructure${locationData}" target="_blank" class="premium-box">Infrastructure Proximity</a>
+                        <a href="${baseFormUrl}?topic=ag_value${locationData}" target="_blank" class="premium-box">Agricultural Value</a>
+                        <a href="${baseFormUrl}?topic=market${locationData}" target="_blank" class="premium-box">Market Context</a>
+                        <a href="${baseFormUrl}?topic=risks${locationData}" target="_blank" class="premium-box">Risks & Trade-Offs</a>
+                        <a href="${baseFormUrl}?topic=insights${locationData}" target="_blank" class="premium-box">Plain-Language Insights</a>
                     </div>
                 `;
                 
